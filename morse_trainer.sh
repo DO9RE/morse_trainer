@@ -1,13 +1,9 @@
 #!/bin/bash
 
-# Datei für Fortschritt
 PROGRESS_FILE="morse_progress.txt"
-
-# Standardgeschwindigkeit (WPM)
 DEFAULT_WPM=20
 WPM=$DEFAULT_WPM
 
-# Morse-Code-Tabelle
 declare -A MORSE_CODE=(
     [A]=".-" [B]="-..." [C]="-.-." [D]="-.."
     [E]="." [F]="..-." [G]="--." [H]="...."
@@ -18,7 +14,6 @@ declare -A MORSE_CODE=(
     [Y]="-.--" [Z]="--.." [AR]=".-.-."
 )
 
-# Fortschritt laden oder initialisieren
 load_progress() {
     if [[ -f "$PROGRESS_FILE" ]]; then
         LESSON=$(<"$PROGRESS_FILE")
@@ -28,22 +23,19 @@ load_progress() {
     fi
 }
 
-# Fortschritt speichern
 save_progress() {
     echo "$LESSON" > "$PROGRESS_FILE"
 }
 
-# Geschwindigkeit anpassen
 calculate_timings() {
-    local unit_length=$(echo "1.2 / $WPM" | bc -l)  # Einheit für einen Punkt in Sekunden
-
+    local unit_length=$(echo "1.2 / $WPM" | bc -l)  # Unit for a dot in seconds
     DOT_LENGTH=$unit_length
     DASH_LENGTH=$(echo "$unit_length * 3" | bc -l)
     PAUSE_SYMBOL=$(echo "$unit_length * 1" | bc -l)
     PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l)
     PAUSE_WORD=$(echo "$unit_length * 7" | bc -l)
 
-    # Anzahl der Fünfergruppen basierend auf Geschwindigkeit
+    # How many 5groups according to speed?
     case $WPM in
         5) GROUP_COUNT=10 ;;
         10) GROUP_COUNT=12 ;;
@@ -51,13 +43,13 @@ calculate_timings() {
         20) GROUP_COUNT=17 ;;
         25) GROUP_COUNT=18 ;;
         30) GROUP_COUNT=20 ;;
-        *) GROUP_COUNT=10 ;;  # Standardwert
+        *) GROUP_COUNT=10 ;;
     esac
 }
 
-# Funktion für Morse-Ton
+# Tone generator function
 play_morse_tone() {
-    local tone_freq=800  # Frequenz in Hz
+    local tone_freq=800 
 
     for (( i=0; i<${#1}; i++ )); do
         char="${1:$i:1}"
@@ -68,36 +60,35 @@ play_morse_tone() {
         fi
         sleep "$PAUSE_SYMBOL"
     done
-    sleep "$PAUSE_LETTER"  # Pause zwischen Buchstaben
+    sleep "$PAUSE_LETTER"  # Pause between letters
 }
 
-# Trainings-Einheit: Zeichen lernen
+# Listen to letters
 training_mode() {
-    echo "Trainings-Einheit: Lernen Sie die Morsezeichen der aktuellen Lektion."
-    echo "Drücken Sie Enter, um zum nächsten Zeichen zu wechseln. (Strg+C zum Beenden)"
+    echo "Listen carefully: Learn the Morse sigens of the current lection."
+    echo "Press Enter to advance to the next sign."
     
-    # Zeichen für die aktuelle Lektion auswählen
+    # Select sign for current lesson
     local available_chars=("${!MORSE_CODE[@]}")
     available_chars=("${available_chars[@]:0:$LESSON}")
 
     for char in "${available_chars[@]}"; do
-        echo "Zeichen: $char - Morse: ${MORSE_CODE[$char]}"
+        echo "Sign: $char - Morse: ${MORSE_CODE[$char]}"
         play_morse_tone "${MORSE_CODE[$char]}"
-        read -r -p "Weiter mit Enter..."
+        read -r -p "Return to continue..."
     done
-    echo "Trainings-Einheit abgeschlossen."
+    echo "Finished listening."
 }
 
-# Menü zur Geschwindigkeitsanpassung
 speed_menu() {
-    echo "Geschwindigkeitsauswahl:"
-    echo "1. 5 WPM (langsam)"
+    echo "Speed selection:"
+    echo "1. 5 WPM (slow)"
     echo "2. 10 WPM"
     echo "3. 15 WPM"
     echo "4. 20 WPM (Standard)"
     echo "5. 25 WPM"
-    echo "6. 30 WPM (schnell)"
-    read -r -p "Wählen Sie die Geschwindigkeit (1-6): " speed_choice
+    echo "6. 30 WPM (fast)"
+    read -r -p "Speed (1-6): " speed_choice
 
     case $speed_choice in
         1) WPM=5 ;;
@@ -106,45 +97,44 @@ speed_menu() {
         4) WPM=20 ;;
         5) WPM=25 ;;
         6) WPM=30 ;;
-        *) echo "Ungültige Eingabe. Standardgeschwindigkeit von 20 WPM wird verwendet." ;;
+        *) echo "Invalid entry, use standard speed of 20 WPM." ;;
     esac
 
-    echo "Geschwindigkeit wurde auf $WPM WPM gesetzt."
+    echo "Speed changed to $WPM WPM."
     calculate_timings
 }
 
-# Hauptprogramm
+# Main program
 main() {
     load_progress
     calculate_timings
 
     while true; do
-        echo "Willkommen zum Morse-Trainer!"
-        echo "1. Trainings-Einheit (Zeichen lernen)"
-        echo "2. Lektion starten"
-        echo "3. Geschwindigkeit anpassen (aktuell: $WPM WPM)"
-        echo "4. Beenden"
-        read -r -p "Wählen Sie eine Option (1-4): " option
+        echo "Welcome to Morse Trainer!"
+        echo "1. Listening unit. (Learn signs)"
+        echo "2. Start typing lesson"
+        echo "3. Change speed (current: $WPM WPM)"
+        echo "4. Quit"
+        read -r -p "Chose an option (1-4): " option
 
         case $option in
             1)
                 training_mode
                 ;;
             2)
-                echo "Aktuelle Lektion: $LESSON Zeichen."
-                echo "Es werden $GROUP_COUNT Fünfergruppen abgespielt."
+                echo "Current lesson: $LESSON signs."
+                echo "$GROUP_COUNT five groups are played back."
 
-                # Zeichen für die Lektion auswählen
+                # Select signs for lesson
                 local available_chars=("${!MORSE_CODE[@]}")
                 available_chars=("${available_chars[@]:0:$LESSON}")
 
-                # Einleitung mit dreimal "V"
-                echo "Einleitung: Dreimal das Zeichen 'V' zur Einstimmung."
+                # Intro VVV
                 for _ in {1..3}; do
                     play_morse_tone "${MORSE_CODE[V]}"
                 done
 
-                # Generiere die Fünfergruppen
+                # Build the 5groups
                 local groups=()
                 for ((g=0; g<$GROUP_COUNT; g++)); do
                     local group=""
@@ -154,68 +144,62 @@ main() {
                     groups+=("$group")
                 done
 
-                # Abspielen und gleichzeitig Benutzer-Eingabe ermöglichen
-                echo "Hören Sie zu und geben Sie gleichzeitig ein! Trennen Sie Gruppen mit Leerzeichen."
+                # Play back and fetch user input
+                echo "Listen and type. Divide groups with spaces."
                 local input=""
                 
-                # Hintergrundprozess zur Tonausgabe
                 (
                     for group in "${groups[@]}"; do
                         for char in $(echo "$group" | grep -o .); do
                             play_morse_tone "${MORSE_CODE[$char]}"
                         done
-                        sleep "$PAUSE_WORD"  # Pause zwischen den Gruppen
+                        sleep "$PAUSE_WORD"  # Pause between groups
                     done
-                    # Abschlusszeichen "AR"
+                    # End sign "AR"
                     play_morse_tone "${MORSE_CODE[AR]}"
                 ) &
 
-                # Eingabe des Benutzers während der Tonausgabe
-                read -r -p "Ihre Eingabe (Gruppen mit Leerzeichen trennen): " input
+                read -r -p "type: " input
 
-                # Hintergrundprozess warten lassen, falls nötig
                 wait
 
-                # Eingabe normalisieren (Großbuchstaben)
                 input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
 
-                # Jede Gruppe separat prüfen
+                # Check every group individually
                 local correct_groups=0
                 local total_groups=${#groups[@]}
                 local input_groups=($input)
 
                 for ((i=0; i<total_groups; i++)); do
                     if [[ "${groups[i]}" == "${input_groups[i]:-}" ]]; then
-                        echo "Gruppe $((i+1)): Korrekt (${groups[i]})"
+                        echo "Group $((i+1)): Correkt (${groups[i]})"
                         ((correct_groups++))
                     else
-                        echo "Gruppe $((i+1)): Falsch (Richtig: ${groups[i]})"
+                        echo "Group $((i+1)): Wrong (Correct: ${groups[i]})"
                     fi
                 done
 
-                # Gesamtergebnis anzeigen
                 local percentage=$((correct_groups * 100 / total_groups))
-                echo "Ergebnis: $correct_groups/$total_groups Gruppen korrekt ($percentage%)."
+                echo "Result: $correct_groups/$total_groups Gruppen korrekt ($percentage%)."
 
-                # Lektion beenden oder wiederholen
                 if ((percentage >= 90)); then
-                    echo "Glückwunsch! Sie dürfen zur nächsten Lektion fortschreiten."
+                    echo "Congratz, advance to next lesson."
                     ((LESSON++))
                     save_progress
                     break
                 else
-                    echo "Bitte versuchen Sie es erneut."
+                    echo "Try again."
                 fi
                 ;;
             3)
                 speed_menu
                 ;;
             4)
-                echo "Auf Wiedersehen!"
+                echo "Bye."
                 exit 0
                 ;;
             *)
-                echo "Ungültige Eingabe. Bitte versuchen Sie es erneut."
+                echo "Invalid entry, try again."
                 ;;
         esac
     done
