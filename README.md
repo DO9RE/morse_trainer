@@ -25,4 +25,4 @@ If you're sighted and want to help: please remember this is primarily a tool for
 
 As a blind developer, I’ve often felt like we're an afterthought in software design. With Morse Trainer, I’m taking matters into my own hands — building something *by* and *for* people like me. If this helps even one person avoid the same frustration I’ve felt, it’s worth it.
 
-– **Richard Emling (DO9RE**
+**Richard Emling (DO9RE)**
