@@ -3,6 +3,7 @@
 PROGRESS_FILE="morse_progress.txt"
 DEFAULT_WPM=20
 WPM=$DEFAULT_WPM
+ERROR_LOG_FILE="error_statistics.txt"
 
 declare -A MORSE_CODE=(
     [A]=".-" [B]="-..." [C]="-.-." [D]="-.."
@@ -63,6 +64,52 @@ play_morse_tone() {
     sleep "$PAUSE_LETTER"  # Pause between letters
 }
 
+# Funktion zur Überprüfung der Eingabe und Protokollierung von Fehlern
+check_and_log_input() {
+    local expected="$1"
+    local input="$2"
+
+    # Erstelle die Datei, falls sie nicht existiert
+    if [[ ! -f "$ERROR_LOG_FILE" ]]; then
+        touch "$ERROR_LOG_FILE"
+    fi
+
+    if [[ "$expected" == "$input" ]]; then
+        echo "Korrekt!"
+        return 0
+    else
+        echo "Falsch! Erwartet: $expected, Eingegeben: $input"
+        
+        # Aktualisiere die Fehlerstatistik
+        if grep -q "^$expected " "$ERROR_LOG_FILE"; then
+            sed -i "s/^$expected \([0-9]*\)$/echo "$expected $((\1 + 1))"/e" "$ERROR_LOG_FILE"
+        else
+            echo "$expected 1" >> "$ERROR_LOG_FILE"
+        fi
+        return 1
+    fi
+}
+
+# Training für schwierige Zeichen
+train_difficult_characters() {
+    echo "Training für schwierige Zeichen beginnt..."
+    
+    if [[ ! -f "$ERROR_LOG_FILE" ]]; then
+        echo "Keine Fehlerstatistik verfügbar. Üben Sie reguläre Zeichen."
+        return
+    fi
+
+    # Sortiere nach Fehleranzahl und frage die Zeichen ab
+    while read -r line; do
+        local char=$(echo "$line" | awk '{print $1}')
+        local count=$(echo "$line" | awk '{print $2}')
+        echo "Übe das Zeichen '$char' (Fehleranzahl: $count)"
+        play_morse_tone "${MORSE_CODE[$char]}"
+        read -r -p "Gib das Zeichen ein: " input
+        check_and_log_input "$char" "$input"
+    done < <(sort -k2 -n -r "$ERROR_LOG_FILE")
+}
+
 # Listen to letters
 training_mode() {
     echo "Listen carefully: Learn the Morse sigens of the current lection."
@@ -114,8 +161,9 @@ main() {
         echo "1. Listening unit. (Learn signs)"
         echo "2. Start typing lesson"
         echo "3. Change speed (current: $WPM WPM)"
-        echo "4. Quit"
-        read -r -p "Chose an option (1-4): " option
+        echo "4. Training für schwierige Zeichen"
+        echo "5. Quit"
+        read -r -p "Chose an option (1-5): " option
 
         case $option in
             1)
@@ -176,6 +224,7 @@ main() {
                         ((correct_groups++))
                     else
                         echo "Group $((i+1)): Wrong (Correct: ${groups[i]})"
+                        check_and_log_input "${groups[i]}" "${input_groups[i]:-}"
                     fi
                 done
 
@@ -195,6 +244,9 @@ main() {
                 speed_menu
                 ;;
             4)
+                train_difficult_characters
+                ;;
+            5)
                 echo "Bye."
                 exit 0
                 ;;
