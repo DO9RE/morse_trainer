@@ -78,9 +78,9 @@ check_and_log_input() {
         echo "Korrekt!"
         return 0
     else
-        echo "Falsch! Erwartet: $expected, Eingegeben: $input"
+        echo "Wrong! Expected: $expected, Entered: $input"
         
-        # Aktualisiere die Fehlerstatistik
+        # Update error statistics
         if grep -q "^$expected " "$ERROR_LOG_FILE"; then
             sed -i "s/^$expected \([0-9]*\)$/echo "$expected $((\1 + 1))"/e" "$ERROR_LOG_FILE"
         else
@@ -90,22 +90,22 @@ check_and_log_input() {
     fi
 }
 
-# Training für schwierige Zeichen
+# Training for difficult characters
 train_difficult_characters() {
-    echo "Training für schwierige Zeichen beginnt..."
+    echo "Training for difficult characters starts..."
     
     if [[ ! -f "$ERROR_LOG_FILE" ]]; then
-        echo "Keine Fehlerstatistik verfügbar. Üben Sie reguläre Zeichen."
+        echo "No file for error statistics present, train regular characters."
         return
     fi
 
-    # Sortiere nach Fehleranzahl und frage die Zeichen ab
+    # Sort after error count and ask characters
     while read -r line; do
         local char=$(echo "$line" | awk '{print $1}')
         local count=$(echo "$line" | awk '{print $2}')
-        echo "Übe das Zeichen '$char' (Fehleranzahl: $count)"
+        echo "Train character '$char' (Error cunt: $count)"
         play_morse_tone "${MORSE_CODE[$char]}"
-        read -r -p "Gib das Zeichen ein: " input
+        read -r -p "Enter character: " input
         check_and_log_input "$char" "$input"
     done < <(sort -k2 -n -r "$ERROR_LOG_FILE")
 }
