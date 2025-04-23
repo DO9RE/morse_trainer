@@ -64,25 +64,24 @@ play_morse_tone() {
     sleep "$PAUSE_LETTER"  # Pause between letters
 }
 
-# Funktion zur Überprüfung der Eingabe und Protokollierung von Fehlern
 check_and_log_input() {
     local expected="$1"
     local input="$2"
 
-    # Erstelle die Datei, falls sie nicht existiert
     if [[ ! -f "$ERROR_LOG_FILE" ]]; then
         touch "$ERROR_LOG_FILE"
     fi
 
     if [[ "$expected" == "$input" ]]; then
-        echo "Korrekt!"
+        echo "correct!"
         return 0
     else
         echo "Wrong! Expected: $expected, Entered: $input"
         
-        # Update error statistics
         if grep -q "^$expected " "$ERROR_LOG_FILE"; then
-            sed -i "s/^$expected \([0-9]*\)$/echo "$expected $((\1 + 1))"/e" "$ERROR_LOG_FILE"
+            local current_count=$(grep "^$expected " "$ERROR_LOG_FILE" | awk '{print $2}')
+            local new_count=$((current_count + 1))
+            sed -i "s/^$expected .*/$expected $new_count/" "$ERROR_LOG_FILE"
         else
             echo "$expected 1" >> "$ERROR_LOG_FILE"
         fi
@@ -113,14 +112,14 @@ train_difficult_characters() {
 # Listen to letters
 training_mode() {
     echo "Listen carefully: Learn the Morse sigens of the current lection."
-    echo "Press Enter to advance to the next sign."
+    echo "Press Enter to advance to the next character."
     
-    # Select sign for current lesson
+    # Select character for current lesson
     local available_chars=("${!MORSE_CODE[@]}")
     available_chars=("${available_chars[@]:0:$LESSON}")
 
     for char in "${available_chars[@]}"; do
-        echo "Sign: $char - Morse: ${MORSE_CODE[$char]}"
+        echo "Character: $char - Morse: ${MORSE_CODE[$char]}"
         play_morse_tone "${MORSE_CODE[$char]}"
         read -r -p "Return to continue..."
     done
@@ -158,10 +157,10 @@ main() {
 
     while true; do
         echo "Welcome to Morse Trainer!"
-        echo "1. Listening unit. (Learn signs)"
+        echo "1. Listening unit. (Learn characters)"
         echo "2. Start typing lesson"
         echo "3. Change speed (current: $WPM WPM)"
-        echo "4. Training für schwierige Zeichen"
+        echo "4. Training difficult characters"
         echo "5. Quit"
         read -r -p "Chose an option (1-5): " option
 
@@ -170,10 +169,10 @@ main() {
                 training_mode
                 ;;
             2)
-                echo "Current lesson: $LESSON signs."
+                echo "Current lesson: $LESSON characters."
                 echo "$GROUP_COUNT five groups are played back."
 
-                # Select signs for lesson
+                # Select characters for lesson
                 local available_chars=("${!MORSE_CODE[@]}")
                 available_chars=("${available_chars[@]:0:$LESSON}")
 
