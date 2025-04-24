@@ -197,6 +197,7 @@ training_mode() {
   echo "Finished listening."
 }
 
+
 train_difficult_characters() {
   echo "Training for difficult characters starts..."
 
@@ -205,12 +206,11 @@ train_difficult_characters() {
     return
   fi
 
-# Load wrong characters and how often they are wrong from the file
   local difficult_chars=()
   while read -r line; do
-  local char=$(echo "$line" | awk '{print $1}')
-  difficult_chars+=("$char")
-  done < <(sort -k2 -n -r "$ERROR_LOG_FILE") # Sort after  error count, descending 
+    local char=$(echo "$line" | awk '{print $1}')
+    difficult_chars+=("$char")
+  done < <(sort -k2 -n -r "$ERROR_LOG_FILE") # Sortiere nach Fehlerhäufigkeit absteigend
 
   if [[ ${#difficult_chars[@]} -eq 0 ]]; then
     echo "No difficult characters to train."
@@ -218,16 +218,23 @@ train_difficult_characters() {
   fi
 
   local groups=($(generate_five_groups difficult_chars 5))
-  echo "You will now train the most difficult characters. Focus on entering them correctly!"
+
+  echo "You will now train your most difficult characters. Listen and type simultaneously!"
+
   for group in "${groups[@]}"; do
     echo "Training group: $group"
 
+    (
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE[$char]}"
     done
+    sleep "$PAUSE_WORD"
+    ) &
 
     read -r -p "Type the group: " input
-    input=$(echo "$input" | tr '[:lower:]' '[:upper:]') # Konvertiere Eingabe in Großbuchstaben
+    wait 
+
+    input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
 
     for ((i=0; i<${#group}; i++)); do
       local expected_char="${group:i:1}"
@@ -235,14 +242,13 @@ train_difficult_characters() {
 
       if [[ "$expected_char" == "$input_char" ]]; then
         echo "Character '$expected_char': Correct!"
-#       Reduce error count in file
+                # Reduce error count in the file
         if grep -q "^$expected_char " "$ERROR_LOG_FILE"; then
           local current_count=$(grep "^$expected_char " "$ERROR_LOG_FILE" | awk '{print $2}')
           local new_count=$((current_count - 1))
 
           if (( new_count <= 0 )); then
-#           Remove the line if the index is 0
-            sed -i "/^$expected_char /d" "$ERROR_LOG_FILE"
+            sed -i "/^$expected_char /d" "$ERROR_LOG_FILE" 
             echo "Character '$expected_char' has been mastered and removed from the error log!"
           else
             sed -i "s/^$expected_char .*/$expected_char $new_count/" "$ERROR_LOG_FILE"
@@ -254,6 +260,7 @@ train_difficult_characters() {
       fi
     done
   done
+
   echo "Difficult character training completed."
 }
 
