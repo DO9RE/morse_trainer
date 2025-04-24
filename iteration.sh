@@ -140,18 +140,34 @@ play_and_evaluate_groups() {
 
 training_mode() {
     echo "Listen carefully: Learn the Morse signs of the current lesson."
-    echo "Press Enter to move to the next character."
+    echo "Press Enter to move to the next character. Press Spacebar to repeat the current character."
 
     local available_chars=("${!MORSE_CODE[@]}")
     available_chars=("${available_chars[@]:0:$LESSON}")
 
     for char in "${available_chars[@]}"; do
         echo "Character: $char - Morse: ${MORSE_CODE[$char]}"
+
         while true; do
+            # Play the current character
             play_morse_tone "${MORSE_CODE[$char]}"
-            read -r -t 1 -p "Press Enter to continue to the next character..." key
+
+            # Wait for user input
+            echo -n "Press a key: "
+            stty -echo -icanon time 0 min 1
+            key=$(dd bs=1 count=1 2>/dev/null)
+            stty echo icanon
+
             if [[ -z "$key" ]]; then
+                # Enter key moves to the next character
                 break
+            elif [[ "$key" == " " ]]; then
+                # Spacebar repeats the current character
+                echo "Repeating character: $char"
+                play_morse_tone "${MORSE_CODE[$char]}"
+            else
+                # Invalid key press
+                echo "Invalid input. Press Enter to move to the next character or Spacebar to repeat."
             fi
         done
     done
