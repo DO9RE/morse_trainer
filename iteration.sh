@@ -139,39 +139,39 @@ play_and_evaluate_groups() {
 }
 
 training_mode() {
-    echo "Listen carefully: Learn the Morse signs of the current lesson."
-    echo "Press Enter to move to the next character. Press Spacebar to repeat the current character."
+  echo "Listen carefully: Learn the Morse signs of the current lesson."
+  echo "Press Enter to move to the next character. Press Spacebar to repeat the current character."
 
-    local available_chars=("${!MORSE_CODE[@]}")
-    available_chars=("${available_chars[@]:0:$LESSON}")
+  local available_chars=("${!MORSE_CODE[@]}")
+  available_chars=("${available_chars[@]:0:$LESSON}")
 
-    for char in "${available_chars[@]}"; do
-        echo "Character: $char - Morse: ${MORSE_CODE[$char]}"
+  local total_chars=${#available_chars[@]}  # Total number of characters in the lesson
 
-        while true; do
-            # Play the current character
-            play_morse_tone "${MORSE_CODE[$char]}"
+  for (( index=0; index<total_chars; index++ )); do
+    local char="${available_chars[index]}"
+    echo "Character $((index + 1)) of $total_chars: $char - Morse: ${MORSE_CODE[$char]}"
 
-            # Wait for user input
-            echo -n "Press a key: "
-            stty -echo -icanon time 0 min 1
-            key=$(dd bs=1 count=1 2>/dev/null)
-            stty echo icanon
+    while true; do
+      char="${available_chars[index]}"
+      echo "Playing character: $char (Morse: ${MORSE_CODE[$char]})"
+      play_morse_tone "${MORSE_CODE[$char]}"
 
-            if [[ -z "$key" ]]; then
-                # Enter key moves to the next character
-                break
-            elif [[ "$key" == " " ]]; then
-                # Spacebar repeats the current character
-                echo "Repeating character: $char"
-                play_morse_tone "${MORSE_CODE[$char]}"
-            else
-                # Invalid key press
-                echo "Invalid input. Press Enter to move to the next character or Spacebar to repeat."
-            fi
-        done
+      echo -n "Press Enter to advance, or Spacebar to repeat: "
+      stty -echo -icanon time 0 min 1
+      key=$(dd bs=1 count=1 2>/dev/null)
+      stty echo icanon
+
+      if [[ -z "$key" ]]; then
+        break # Next character
+      elif [[ "$key" == " " ]]; then
+        echo "Repeating character: $char (Morse: ${MORSE_CODE[$char]})"
+        play_morse_tone "${MORSE_CODE[$char]}"
+      else
+        echo "Invalid input. Press Enter to move to the next character or Spacebar to repeat."
+      fi
     done
-    echo "Finished listening."
+  done
+  echo "Finished listening."
 }
 
 train_difficult_characters() {
