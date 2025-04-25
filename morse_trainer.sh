@@ -15,6 +15,40 @@ declare -A MORSE_CODE=(
     [Y]="-.--" [Z]="--.." [AR]=".-.-."
 )
 
+generate_location() {
+  local file="countries_and_cities.txt"
+  local line=$(shuf -n 1 "$file")
+  local country_code=$(echo "$line" | cut -d':' -f1)
+  local country_name=$(echo "$line" | cut -d':' -f2)
+  local cities=$(echo "$line" | cut -d':' -f3)
+  local city=$(echo "$cities" | tr ',' '\n' | shuf -n 1)
+  echo "$country_code:$city"
+}
+
+generate_name() {
+  local name=$(shuf -n 1 names.txt)
+  echo "$name"
+}
+
+generate_call_sign() {
+  local country_code=$1
+  local number=$(( RANDOM % 9 + 1 ))
+  local suffix=$(cat /dev/urandom | tr -dc 'A-Z' | fold -w 3 | head -n 1)
+  local call_sign="${country_code}${number}${suffix}"
+  echo "$call_sign"
+}
+
+generate_morse_message() {
+  local location=$(generate_location)
+  local country_code=$(echo "$location" | cut -d':' -f1)
+  local city=$(echo "$location" | cut -d':' -f2)
+  local call_sign=$(generate_call_sign "$country_code")
+  local message="CQ CQ CQ DE $call_sign $call_sign K
+$call_sign DE $country_code TNX FER CALL UR QTH $city $city HW? K
+$country_code DE $call_sign R TNX FER RPRT 73 SK"
+  echo "$message"
+}
+
 load_progress() {
   if [[ -f "$PROGRESS_FILE" ]]; then
     LESSON=$(<"$PROGRESS_FILE")

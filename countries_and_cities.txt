@@ -1,0 +1,7 @@
+DL:Germany:Berlin,Hamburg,Munich,Frankfurt,Cologne
+F:France:Paris,Marseille,Lyon,Toulouse,Nice
+G:United Kingdom:London,Manchester,Birmingham,Glasgow,Edinburgh
+EA:Spain:Madrid,Barcelona,Valencia,Seville,Zaragoza
+I:Italy:Rome,Milan,Naples,Turin,Florence
+SM:Sweden:Stockholm,Gothenburg,Uppsala,Västerås
+K:United States:New York,Los Angeles,Chicago,Houston,Phoenix
