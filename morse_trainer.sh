@@ -238,7 +238,6 @@ play_morse_code() {
         ;;
     esac
 
-    # Prüfen, ob das Zeichen im Array existiert, und Morsecode abspielen
     if [[ -n "${MORSE_CODE[$char]}" ]]; then
       echo "DEBUG: Playing Morse code for '$char': ${MORSE_CODE[$char]}"
       play_morse_tone "${MORSE_CODE[$char]}"
