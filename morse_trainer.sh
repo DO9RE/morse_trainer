@@ -291,8 +291,8 @@ play_morse_code() {
 }
 
 log_incorrect_character() {
-  local expected="$1"
-  local input="$2"
+  local expected=$(echo "$1" | tr '[:lower:]' '[:upper:]')
+  local input=$(echo "$2" | tr '[:lower:]' '[:upper:]')    # Uppercase-Konvertierung
 
   if [[ ! -f "$ERROR_LOG_FILE" ]]; then
     touch "$ERROR_LOG_FILE"
@@ -308,7 +308,6 @@ log_incorrect_character() {
     fi
   fi
 }
-
 generate_five_groups() {
   local -n group_chars=$1
   local group_count=$2
