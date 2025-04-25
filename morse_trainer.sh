@@ -64,7 +64,7 @@ sort_morse_code_advanced() {
 echo "Sorted keys: ${sorted_keys[@]}"
 for key in "${sorted_keys[@]}"; do
     if [[ "$key" == "\?" ]]; then
-      temp_array["?"]="${morse_array['?']}"
+      temp_array["\?"]="${morse_array["\?"]}"
     else
      temp_array["$key"]="${morse_array["$key"]}"
     fi
