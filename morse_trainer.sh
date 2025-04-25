@@ -12,7 +12,7 @@ declare -A MORSE_CODE=(
   [M]="--" [N]="-." [O]="---" [P]=".--."
   [Q]="--.-" [R]=".-." [S]="..." [T]="-"
   [U]="..-" [V]="...-" [W]=".--" [X]="-..-"
-  [Y]="-.--" [Z]="--.." [AR]=".-.-." ["\?"]="..--.."
+  [Y]="-.--" [Z]="--.." [AR]=".-.-." ["question_mark"]="..--.."
   [0]="-----" [1]=".----" [2]="..---" [3]="...--" [4]="....-"
   [5]="....." [6]="-...." [7]="--..." [8]="---.." [9]="----."
 )
@@ -64,12 +64,7 @@ sort_morse_code_advanced() {
   echo "Sorted keys: ${sorted_keys[@]}"
   for key in "${sorted_keys[@]}"; do
     echo "Processing key: $key"  # Debugging
-    if [[ "$key" == "\?" ]]; then
-      continue # debug
-#     temp_array["?"]="${morse_array["?"]}"  # Spezielle Behandlung für ?
-    else
-      temp_array["$key"]="${morse_array["$key"]}"
-    fi
+    temp_array["$key"]="${morse_array["$key"]}"
   done
 
 # Overwrite original array
