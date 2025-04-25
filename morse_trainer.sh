@@ -181,14 +181,25 @@ play_morse_tone() {
 
 play_morse_code() {
   local text="$1"
-  text=$(echo "$text" | tr '[:lower:]' '[:upper:]')  # Konvertiere gesamten Text in Großbuchstaben
+  echo "DEBUG: Original input text: '$text'"
+  
+  # Entferne unerwünschte Zeichen wie Steuerzeichen oder zusätzliche Leerzeichen
+  text=$(echo "$text" | tr -d '\r' | tr -s '[:space:]')
+  echo "DEBUG: Cleaned input text: '$text'"
+
+  # Konvertiere Text in Großbuchstaben
+  text=$(echo "$text" | tr '[:lower:]' '[:upper:]')
+  echo "DEBUG: Converted to uppercase: '$text'"
 
   # Iteriere über jedes Zeichen im Text
   for (( i=0; i<${#text}; i++ )); do
+    # Hole das aktuelle Zeichen
     local char="${text:i:1}"
+    echo "DEBUG: Processing character at index $i: '$char'"
 
     # Behandle Leerzeichen für Wortpausen
     if [[ "$char" == " " ]]; then
+      echo "DEBUG: Detected space, pausing for a word."
       sleep "$PAUSE_WORD"  # Pause zwischen Wörtern
       continue
     fi
@@ -196,6 +207,7 @@ play_morse_code() {
     # Sonderzeichen-Mapping (kann erweitert werden)
     case "$char" in
       "?")
+        echo "DEBUG: Mapping '?' to 'question_mark'."
         char="question_mark"
         ;;
       # Weitere Sonderzeichen können hier hinzugefügt werden
@@ -205,13 +217,17 @@ play_morse_code() {
 
     # Prüfen, ob das Zeichen im Array existiert, und Morsecode abspielen
     if [[ -n "${MORSE_CODE[$char]}" ]]; then
+      echo "DEBUG: Playing Morse code for '$char': ${MORSE_CODE[$char]}"
       play_morse_tone "${MORSE_CODE[$char]}"
     else
-      echo "Warnung: Kein Morse-Code für Zeichen '$char' definiert."
+      echo "WARNUNG: Kein Morse-Code für Zeichen '$char' definiert."
     fi
 
-    sleep "$PAUSE_LETTER"  # Pause zwischen Buchstaben
+    # Pause zwischen Buchstaben
+    sleep "$PAUSE_LETTER"
   done
+
+  echo "DEBUG: Finished processing text."
 }
 
 log_incorrect_character() {
