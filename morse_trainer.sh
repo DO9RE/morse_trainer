@@ -62,7 +62,12 @@ sort_morse_code_advanced() {
 # refresh array with new order
   local temp_array=()
   for key in "${sorted_keys[@]}"; do
-    temp_array["$key"]="${morse_array[$key]}"
+    echo "Processing key: $key"  # Debugging
+    if [[ "$key" == "?" ]]; then
+      temp_array["$key"]="${morse_array['?']}"  # Spezialbehandlung für ?
+    else
+      temp_array["$key"]="${morse_array["$key"]}"
+    fi
   done
 
 # Overwrite original array
