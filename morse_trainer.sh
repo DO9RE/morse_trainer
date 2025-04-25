@@ -12,10 +12,67 @@ declare -A MORSE_CODE=(
   [M]="--" [N]="-." [O]="---" [P]=".--."
   [Q]="--.-" [R]=".-." [S]="..." [T]="-"
   [U]="..-" [V]="...-" [W]=".--" [X]="-..-"
-  [Y]="-.--" [Z]="--.." [AR]=".-.-." [?]="..--.."
+  [Y]="-.--" [Z]="--.." [AR]=".-.-." [fragezeichen]="..--.."
   [0]="-----" [1]=".----" [2]="..---" [3]="...--" [4]="....-"
   [5]="....." [6]="-...." [7]="--..." [8]="---.." [9]="----."
 )
+
+sort_morse_code_advanced() {
+  local -n morse_array=$1  # Access the given array as reference
+  local easy_keys=() # Signs with easy patterns, E, T ...
+  local medium_keys=() # Characters with middel complexity. I, M, S, O ...
+  local hard_keys=() 
+  local numbers_keys=()
+  local special_keys=()
+  local sorted_keys=()     # Endgültig sortierte Liste
+
+  for key in "${!morse_array[@]}"; do
+    local code="${morse_array[$key]}"
+    local length="${#code}"
+        
+#   Categorize the patterns
+    if [[ "$key" =~ [0-9] ]]; then
+      numbers_keys+=("$key")       
+    elif [[ "$key" =~ [A-Z] ]]; then
+      if [[ "$code" =~ ^(\.|-)\1*$ ]] || [[ "$length" -le 2 ]]; then
+        easy_keys+=("$key")          
+      elif [[ "$length" -le 3 ]]; then
+        medium_keys+=("$key")
+      else
+        hard_keys+=("$key")         
+      fi
+    else
+      special_keys+=("$key")         
+    fi
+  done
+
+# Easy keys first
+  sorted_keys+=("${easy_keys[@]}")
+# Middle and hard characters alternating
+  local max_length=$(( ${#medium_keys[@]} > ${#hard_keys[@]} ? ${#medium_keys[@]} : ${#hard_keys[@]} ))
+  for ((i=0; i<max_length; i++)); do
+    [[ $i -lt ${#medium_keys[@]} ]] && sorted_keys+=("${medium_keys[$i]}")
+    [[ $i -lt ${#hard_keys[@]} ]] && sorted_keys+=("${hard_keys[$i]}")
+  done
+
+# Numbers and special characters in the end
+  sorted_keys+=("${numbers_keys[@]}")
+  sorted_keys+=("${special_keys[@]}")
+
+# refresh array with new order
+  local temp_array=()
+  for key in "${sorted_keys[@]}"; do
+    temp_array["$key"]="${morse_array[$key]}"
+  done
+
+# Overwrite original array
+  for key in "${!morse_array[@]}"; do
+    unset "morse_array[$key]"
+  done
+  for key in "${!temp_array[@]}"; do
+    morse_array["$key"]="${temp_array[$key]}"
+  done
+}
 
 generate_location() {
   local file="countries_and_cities.txt"
@@ -328,6 +385,7 @@ speed_menu() {
 main() {
   load_progress
   calculate_timings
+  sort_morse_code_advanced MORSE_CODE
 
   while true; do
     echo "Welcome to Morse Trainer!"
