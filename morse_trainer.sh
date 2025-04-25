@@ -112,7 +112,7 @@ generate_location() {
   local country_code=$(echo "$line" | cut -d':' -f1)
   local country_name=$(echo "$line" | cut -d':' -f2)
   local cities=$(echo "$line" | cut -d':' -f3)
-  local city=$(echo "$cities" | tr ',' '\n' | shuf -n 1)
+  local city=$(echo "$cities" | tr ',' '\n' | shuf -n 1 | tr '[:lower:]' '[:upper:]')
   echo "$country_code:$city"
 }
 
