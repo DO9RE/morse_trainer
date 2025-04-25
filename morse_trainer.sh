@@ -138,8 +138,39 @@ qso_training_mode() {
   local message="CQ CQ CQ DE $call_sign $call_sign K
 $call_sign DE $country_code TNX FER CALL UR QTH $city $city NAME $name $name HW? K
 $country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QSO 73 GL SK"
-  echo "$message"
-  play_morse_code "$message"
+
+# echo "$message"
+
+  play_morse_code "$message" &
+
+  read -r -p "Type: " input
+  wait
+
+  input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
+
+  local total_characters=${#message}
+  local correct_characters=0
+
+  for (( i=0; i<${#message}; i++ )); do
+    local expected_char="${message:i:1}"
+    local input_char="${input:i:1}"
+
+    if [[ "$expected_char" == "$input_char" ]]; then
+      correct_characters=$((correct_characters + 1))
+    else
+      echo "Wrong character: Expected '$expected_char', entered '$input_char'"
+      log_incorrect_character "$expected_char" "$input_char"
+    fi
+  done
+
+  local percentage=$((correct_characters * 100 / total_characters))
+  echo "Summary: $correct_characters out of $total_characters characters correkt ($percentage%)."
+
+  if (( percentage >= 90 )); then
+    echo "Congraz! $percentage% correct."
+  else
+    echo "You reached $percentage%, keep training."
+  fi
 }
 
 load_progress() {
