@@ -1,4 +1,12 @@
 #!/bin/bash
+trap 'cleanup' INT TERM
+
+cleanup() {
+    echo "Cleaning up background processes..."
+    pkill -P $$
+    echo "Script terminated. All background processes have been stopped."
+    exit 1
+}
 
 PROGRESS_FILE="morse_progress.txt"
 DEFAULT_WPM=20
