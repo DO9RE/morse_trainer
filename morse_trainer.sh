@@ -6,13 +6,15 @@ WPM=$DEFAULT_WPM
 ERROR_LOG_FILE="error_statistics.txt"
 
 declare -A MORSE_CODE=(
-    [A]=".-" [B]="-..." [C]="-.-." [D]="-.."
-    [E]="." [F]="..-." [G]="--." [H]="...."
-    [I]=".." [J]=".---" [K]="-.-" [L]=".-.."
-    [M]="--" [N]="-." [O]="---" [P]=".--."
-    [Q]="--.-" [R]=".-." [S]="..." [T]="-"
-    [U]="..-" [V]="...-" [W]=".--" [X]="-..-"
-    [Y]="-.--" [Z]="--.." [AR]=".-.-."
+  [A]=".-" [B]="-..." [C]="-.-." [D]="-.."
+  [E]="." [F]="..-." [G]="--." [H]="...."
+  [I]=".." [J]=".---" [K]="-.-" [L]=".-.."
+  [M]="--" [N]="-." [O]="---" [P]=".--."
+  [Q]="--.-" [R]=".-." [S]="..." [T]="-"
+  [U]="..-" [V]="...-" [W]=".--" [X]="-..-"
+  [Y]="-.--" [Z]="--.." [AR]=".-.-." [?]="..--.."
+  [0]="-----" [1]=".----" [2]="..---" [3]="...--" [4]="....-"
+  [5]="....." [6]="-...." [7]="--..." [8]="---.." [9]="----."
 )
 
 generate_location() {
@@ -333,7 +335,8 @@ main() {
     echo "2. Start typing lesson"
     echo "3. Change speed (current: $WPM WPM)"
     echo "4. Train difficult characters"
-    echo "5. Quit"
+    echo "5. QSO training mode"
+    echo "6. Quit"
     read -r -p "Choose an option (1-5): " option
 
     case $option in
@@ -354,6 +357,9 @@ main() {
         train_difficult_characters
         ;;
       5)
+        qso_training_mode
+        ;;
+      6)
         echo "Bye."
         exit 0
         ;;
