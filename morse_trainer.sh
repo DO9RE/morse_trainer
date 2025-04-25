@@ -38,14 +38,15 @@ generate_call_sign() {
   echo "$call_sign"
 }
 
-generate_morse_message() {
+qso_training_mode() {
   local location=$(generate_location)
   local country_code=$(echo "$location" | cut -d':' -f1)
   local city=$(echo "$location" | cut -d':' -f2)
   local call_sign=$(generate_call_sign "$country_code")
+  local name=$(generate_name)
   local message="CQ CQ CQ DE $call_sign $call_sign K
-$call_sign DE $country_code TNX FER CALL UR QTH $city $city HW? K
-$country_code DE $call_sign R TNX FER RPRT 73 SK"
+$call_sign DE $country_code TNX FER CALL UR QTH $city $city NAME $name $name HW? K
+$country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QSO 73 GL SK"
   echo "$message"
 }
 
