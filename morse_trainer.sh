@@ -130,47 +130,85 @@ generate_call_sign() {
 }
 
 qso_training_mode() {
-  local location=$(generate_location)
-  local country_code=$(echo "$location" | cut -d':' -f1)
-  local city=$(echo "$location" | cut -d':' -f2)
-  local call_sign=$(generate_call_sign "$country_code")
-  local name=$(generate_name)
-  local message="CQ CQ CQ DE $call_sign $call_sign K
+    local location=$(generate_location)
+    local country_code=$(echo "$location" | cut -d':' -f1)
+    local city=$(echo "$location" | cut -d':' -f2)
+    local call_sign=$(generate_call_sign "$country_code")
+    local name=$(generate_name)
+    local message="CQ CQ CQ DE $call_sign $call_sign K
 $call_sign DE $country_code TNX FER CALL UR QTH $city $city NAME $name $name HW? K
 $country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QSO 73 GL SK"
 
-# echo "$message"
+    # Debug: Original Message
+    echo "DEBUG: Original message: $message"
 
-  play_morse_code "$message" &
+    # Nachricht in Gruppen aufteilen (Trennung an Leerzeichen)
+    local groups=()
+    while IFS= read -r -d ' ' group; do
+        groups+=("$group")
+    done < <(echo "$message ")
 
-  read -r -p "Type: " input
-  wait
+    echo "DEBUG: Split message into groups: ${groups[*]}"
 
-  input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
+    # Gruppenweise abspielen
+    (
+    for group in "${groups[@]}"; do
+        for char in $(echo "$group" | grep -o .); do
+            play_morse_tone "${MORSE_CODE["$char"]}"
+        done
+        sleep "$PAUSE_WORD" # Pause zwischen Gruppen
+    done
+    play_morse_tone "${MORSE_CODE[AR]}" # Endsignal
+    ) &
 
-  local total_characters=${#message}
-  local correct_characters=0
+    # Benutzereingabe abfragen
+    read -r -p "Type the message: " input
+    wait # Warten, bis der Hintergrundprozess abgeschlossen ist
 
-  for (( i=0; i<${#message}; i++ )); do
-    local expected_char="${message:i:1}"
-    local input_char="${input:i:1}"
+    # Eingabe und Originalnachricht vergleichen
+    input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
+    local input_groups=($input) # Benutzereingabe in Gruppen umwandeln
 
-    if [[ "$expected_char" == "$input_char" ]]; then
-      correct_characters=$((correct_characters + 1))
+    local total_characters=0
+    local correct_characters=0
+
+    for ((i=0; i<${#groups[@]}; i++)); do
+        local expected_group="${groups[i]}"
+        local input_group="${input_groups[i]:-}" # Standardwert, falls Eingabe kürzer ist
+
+        # Gesamte Zeichen zählen
+        total_characters=$((total_characters + ${#expected_group}))
+
+        if [[ "$expected_group" == "$input_group" ]]; then
+            echo "Group $((i+1)): Correct (${expected_group})"
+            correct_characters=$((correct_characters + ${#expected_group}))
+        else
+            echo "Group $((i+1)): Wrong (Expected: ${expected_group}, Entered: ${input_group})"
+
+            # Zeichenweise vergleichen
+            for ((j=0; j<${#expected_group}; j++)); do
+                local expected_char="${expected_group:j:1}"
+                local input_char="${input_group:j:1}"
+
+                if [[ "$expected_char" == "$input_char" ]]; then
+                    correct_characters=$((correct_characters + 1))
+                else
+                    echo "Character '${expected_char}' was incorrect (Entered: '${input_char:-[none]}')"
+                    log_incorrect_character "$expected_char" "$input_char" # Fehler loggen
+                fi
+            done
+        fi
+    done
+
+    # Prozentsatz der korrekten Zeichen berechnen
+    local percentage=$((correct_characters * 100 / total_characters))
+    echo "Summary: You got $correct_characters out of $total_characters characters correct ($percentage%)."
+
+    if (( percentage >= 90 )); then
+        echo "Congratulations! You passed with $percentage%. Keep up the good work!"
     else
-      echo "Wrong character: Expected '$expected_char', entered '$input_char'"
-      log_incorrect_character "$expected_char" "$input_char"
+        echo "You scored $percentage%. Keep training to improve."
     fi
-  done
-
-  local percentage=$((correct_characters * 100 / total_characters))
-  echo "Summary: $correct_characters out of $total_characters characters correkt ($percentage%)."
-
-  if (( percentage >= 90 )); then
-    echo "Congraz! $percentage% correct."
-  else
-    echo "You reached $percentage%, keep training."
-  fi
 }
 
 load_progress() {
