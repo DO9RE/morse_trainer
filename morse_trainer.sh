@@ -197,7 +197,7 @@ play_and_evaluate_groups() {
   ( # happens in background, therefore the parentesis 
   for group in "${groups[@]}"; do
     for char in $(echo "$group" | grep -o .); do
-      play_morse_tone "${MORSE_CODE[$char]}"
+      play_morse_tone "${MORSE_CODE["$char"]}"
     done
     sleep "$PAUSE_WORD"
     done
@@ -270,8 +270,8 @@ training_mode() {
 
     while true; do
       char="${available_chars[index]}"
-      echo "Playing character: $char (Morse: ${MORSE_CODE[$char]})"
-      play_morse_tone "${MORSE_CODE[$char]}"
+      echo "Playing character: $char (Morse: ${MORSE_CODE["$char"]})"
+      play_morse_tone "${MORSE_CODE["$char"]}"
 
       echo -n "Press Enter to advance, or Spacebar to repeat: "
       stty -echo -icanon time 0 min 1
@@ -320,7 +320,7 @@ train_difficult_characters() {
 
     (
     for char in $(echo "$group" | grep -o .); do
-      play_morse_tone "${MORSE_CODE[$char]}"
+      play_morse_tone "${MORSE_CODE["$char"]}"
     done
     sleep "$PAUSE_WORD"
     ) &
