@@ -18,61 +18,91 @@ declare -A MORSE_CODE=(
 )
 
 sort_morse_code_advanced() {
-  local -n morse_array=$1  # Access the given array as reference
-  local easy_keys=() # Signs with easy patterns, E, T ...
-  local medium_keys=() # Characters with middel complexity. I, M, S, O ...
-  local hard_keys=() 
+  local -n morse_array=$1  # Zugriff auf das übergebene Array per Referenz
+  local easy_keys=()
+  local medium_keys=()
+  local hard_keys=()
   local numbers_keys=()
   local special_keys=()
-  local sorted_keys=()     # Endgültig sortierte Liste
+  local sorted_keys=()
 
+  # Debug: Originalzustand des Arrays ausgeben
+  echo "DEBUG: Original keys in MORSE_CODE:"
+  for key in "${!morse_array[@]}"; do
+    echo "  Key: $key, Value: ${morse_array[$key]}"
+  done
+
+  # Schlüssel in Kategorien einteilen
   for key in "${!morse_array[@]}"; do
     local code="${morse_array[$key]}"
     local length="${#code}"
-        
-#   Categorize the patterns
+
+    # Debug: Schlüssel kategorisieren
+    echo "DEBUG: Processing key '$key' with Morse code '$code'"
+
     if [[ "$key" =~ [0-9] ]]; then
-      numbers_keys+=("$key")       
+      numbers_keys+=("$key")
     elif [[ "$key" =~ [A-Z] ]]; then
       if [[ "$code" =~ ^(\.|-)\1*$ ]] || [[ "$length" -le 2 ]]; then
-        easy_keys+=("$key")          
+        easy_keys+=("$key")
+        echo "DEBUG: Key '$key' categorized as EASY"
       elif [[ "$length" -le 3 ]]; then
         medium_keys+=("$key")
+        echo "DEBUG: Key '$key' categorized as MEDIUM"
       else
-        hard_keys+=("$key")         
+        hard_keys+=("$key")
+        echo "DEBUG: Key '$key' categorized as HARD"
       fi
     else
-      special_keys+=("$key")         
+      special_keys+=("$key")
+      echo "DEBUG: Key '$key' categorized as SPECIAL"
     fi
   done
 
-# Easy keys first
+  # Sortierte Schlüssel zusammenfügen
   sorted_keys+=("${easy_keys[@]}")
-# Middle and hard characters alternating
   local max_length=$(( ${#medium_keys[@]} > ${#hard_keys[@]} ? ${#medium_keys[@]} : ${#hard_keys[@]} ))
   for ((i=0; i<max_length; i++)); do
     [[ $i -lt ${#medium_keys[@]} ]] && sorted_keys+=("${medium_keys[$i]}")
     [[ $i -lt ${#hard_keys[@]} ]] && sorted_keys+=("${hard_keys[$i]}")
   done
-
-# Numbers and special characters in the end
   sorted_keys+=("${numbers_keys[@]}")
   sorted_keys+=("${special_keys[@]}")
 
-# refresh array with new order
-  local temp_array=()
-  echo "Sorted keys: ${sorted_keys[@]}"
+  # Debug: Ausgeben der sortierten Schlüssel
+  echo "DEBUG: Sorted keys:"
   for key in "${sorted_keys[@]}"; do
-    echo "Processing key: $key"  # Debugging
-    temp_array["$key"]="${morse_array["$key"]}"
+    echo "  Key: $key"
   done
 
-# Overwrite original array
+  # Neues Array auf Basis der sortierten Schlüssel erstellen
+  local temp_array=()
+  for key in "${sorted_keys[@]}"; do
+    if [[ -n "${morse_array[$key]}" ]]; then
+      temp_array["$key"]="${morse_array[$key]}"
+    else
+      echo "WARNUNG: Key '$key' existiert nicht im ursprünglichen Array!"
+    fi
+  done
+
+  # Debug: Neues Array ausgeben
+  echo "DEBUG: New array before overwriting original:"
+  for key in "${!temp_array[@]}"; do
+    echo "  Key: $key, Value: ${temp_array[$key]}"
+  done
+
+  # Originales Array löschen und neu aufbauen
   for key in "${!morse_array[@]}"; do
     unset "morse_array[$key]"
   done
   for key in "${!temp_array[@]}"; do
     morse_array["$key"]="${temp_array[$key]}"
+  done
+
+  # Debug: Endgültiges Array ausgeben
+  echo "DEBUG: Final state of MORSE_CODE:"
+  for key in "${!morse_array[@]}"; do
+    echo "  Key: $key, Value: ${morse_array[$key]}"
   done
 }
 
@@ -109,7 +139,7 @@ qso_training_mode() {
 $call_sign DE $country_code TNX FER CALL UR QTH $city $city NAME $name $name HW? K
 $country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QSO 73 GL SK"
   echo "$message"
-  play_morse_code "$message"  # Text in Morsecode umwandeln und abspielen
+  play_morse_code "$message"
 }
 
 load_progress() {
@@ -151,33 +181,36 @@ play_morse_tone() {
 
 play_morse_code() {
   local text="$1"
-  text=$(echo "$text" | tr '[:lower:]' '[:upper:]')  # to upper case
+  text=$(echo "$text" | tr '[:lower:]' '[:upper:]')  # Konvertiere gesamten Text in Großbuchstaben
 
+  # Iteriere über jedes Zeichen im Text
   for (( i=0; i<${#text}; i++ )); do
     local char="${text:i:1}"
 
+    # Behandle Leerzeichen für Wortpausen
     if [[ "$char" == " " ]]; then
-      sleep "$PAUSE_WORD" 
+      sleep "$PAUSE_WORD"  # Pause zwischen Wörtern
       continue
     fi
 
-    # Sonderzeichen durch Array-Schlüssel ersetzen
+    # Sonderzeichen-Mapping (kann erweitert werden)
     case "$char" in
       "?")
         char="question_mark"
         ;;
-      # Add more special characters
+      # Weitere Sonderzeichen können hier hinzugefügt werden
       *)
         ;;
     esac
 
+    # Prüfen, ob das Zeichen im Array existiert, und Morsecode abspielen
     if [[ -n "${MORSE_CODE[$char]}" ]]; then
       play_morse_tone "${MORSE_CODE[$char]}"
     else
-      echo "Warning! No Morse code for character '$char' defined."
+      echo "Warnung: Kein Morse-Code für Zeichen '$char' definiert."
     fi
 
-    sleep "$PAUSE_LETTER"
+    sleep "$PAUSE_LETTER"  # Pause zwischen Buchstaben
   done
 }
 
@@ -420,7 +453,7 @@ speed_menu() {
 main() {
   load_progress
   calculate_timings
-  sort_morse_code_advanced MORSE_CODE
+# sort_morse_code_advanced MORSE_CODE
 
   while true; do
     echo "Welcome to Morse Trainer!"
