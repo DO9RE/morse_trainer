@@ -117,7 +117,7 @@ generate_location() {
 }
 
 generate_name() {
-  local name=$(shuf -n 1 names.txt)
+  local name=$(shuf -n 1 names.txt | tr '[:lower:]' '[:upper:]')
   echo "$name"
 }
 
@@ -256,6 +256,7 @@ play_morse_code() {
   for (( i=0; i<${#text}; i++ )); do
     # Hole das aktuelle Zeichen
     local char="${text:i:1}"
+    char=$(echo "$char" | tr '[:lower:]' '[:upper:]')
     echo "DEBUG: Processing character at index $i: '$char'"
 
     # Behandle Leerzeichen für Wortpausen
@@ -444,7 +445,7 @@ train_difficult_characters() {
 
   local difficult_chars=()
   while read -r line; do
-    local char=$(echo "$line" | awk '{print $1}')
+    local char=$(echo "$line" | awk '{print $1}' | tr '[:lower:]' '[:upper:]')
     difficult_chars+=("$char")
   done < <(sort -k2 -n -r "$ERROR_LOG_FILE") # Sortiere nach Fehlerhäufigkeit absteigend
 
