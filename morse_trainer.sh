@@ -109,6 +109,7 @@ qso_training_mode() {
 $call_sign DE $country_code TNX FER CALL UR QTH $city $city NAME $name $name HW? K
 $country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QSO 73 GL SK"
   echo "$message"
+  play_morse_code "$message"  # Text in Morsecode umwandeln und abspielen
 }
 
 load_progress() {
@@ -146,6 +147,38 @@ play_morse_tone() {
     sleep "$PAUSE_SYMBOL"
   done
   sleep "$PAUSE_LETTER"
+}
+
+play_morse_code() {
+  local text="$1"
+  text=$(echo "$text" | tr '[:lower:]' '[:upper:]')  # to upper case
+
+  for (( i=0; i<${#text}; i++ )); do
+    local char="${text:i:1}"
+
+    if [[ "$char" == " " ]]; then
+      sleep "$PAUSE_WORD" 
+      continue
+    fi
+
+    # Sonderzeichen durch Array-Schlüssel ersetzen
+    case "$char" in
+      "?")
+        char="question_mark"
+        ;;
+      # Add more special characters
+      *)
+        ;;
+    esac
+
+    if [[ -n "${MORSE_CODE[$char]}" ]]; then
+      play_morse_tone "${MORSE_CODE[$char]}"
+    else
+      echo "Warning! No Morse code for character '$char' defined."
+    fi
+
+    sleep "$PAUSE_LETTER"
+  done
 }
 
 log_incorrect_character() {
