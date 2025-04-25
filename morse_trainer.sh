@@ -182,14 +182,6 @@ play_morse_tone() {
 play_morse_code() {
   local text="$1"
   echo "DEBUG: Original input text: '$text'"
-  
-  # Entferne unerwünschte Zeichen wie Steuerzeichen oder zusätzliche Leerzeichen
-  text=$(echo "$text" | tr -d '\r' | tr -s '[:space:]')
-  echo "DEBUG: Cleaned input text: '$text'"
-
-  # Konvertiere Text in Großbuchstaben
-  text=$(echo "$text" | tr '[:lower:]' '[:upper:]')
-  echo "DEBUG: Converted to uppercase: '$text'"
 
   # Iteriere über jedes Zeichen im Text
   for (( i=0; i<${#text}; i++ )); do
@@ -374,7 +366,6 @@ training_mode() {
   done
   echo "Finished listening."
 }
-
 
 train_difficult_characters() {
   echo "Training for difficult characters starts..."
