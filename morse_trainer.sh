@@ -278,6 +278,15 @@ calculate_timings() {
   PAUSE_SYMBOL=$(echo "$unit_length * 1" | bc -l | tr -d '[:space:]')
   PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l | tr -d '[:space:]')
   PAUSE_WORD=$(echo "$unit_length * 7" | bc -l | tr -d '[:space:]')
+
+  # Debug-Ausgaben
+  echo "DEBUG: WPM: $WPM"
+  echo "DEBUG: Unit Length: $unit_length"
+  echo "DEBUG: DOT_LENGTH: $DOT_LENGTH"
+  echo "DEBUG: DASH_LENGTH: $DASH_LENGTH"
+  echo "DEBUG: PAUSE_SYMBOL: $PAUSE_SYMBOL"
+  echo "DEBUG: PAUSE_LETTER: $PAUSE_LETTER"
+  echo "DEBUG: PAUSE_WORD: $PAUSE_WORD"
 }
 
 play_morse_tone() {
