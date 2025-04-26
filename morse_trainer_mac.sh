@@ -25,6 +25,41 @@ declare -A MORSE_CODE=(
   [Y]="-.--" [Z]="--.." [AR]=".-.-." ["?"]="..--.."
 )
 
+setup_aliases() {
+# Detect operating system
+  local platform="$OSTYPE"
+
+  if [[ "$platform" == "darwin"* ]]; then
+#   macOS-specific aliases
+    alias shuf="gshuf"  # Use GNU shuf from coreutils
+    alias sed="gsed"    # Use GNU sed from coreutils
+    alias grep="ggrep"  # Use GNU grep from coreutils
+
+#   Ensure necessary GNU tools are installed
+    if ! command -v gshuf &> /dev/null; then
+      echo "Error: gshuf (GNU shuf) is not installed. Install it with 'brew install coreutils'."
+      exit 1
+    fi
+    if ! command -v gsed &> /dev/null; then
+      echo "Error: gsed (GNU sed) is not installed. Install it with 'brew install gnu-sed'."
+      exit 1
+    fi
+    if ! command -v ggrep &> /dev/null; then
+      echo "Error: ggrep (GNU grep) is not installed. Install it with 'brew install grep'."
+      exit 1
+    fi
+
+    echo "Aliases set for macOS: shuf -> gshuf, sed -> gsed, grep -> ggrep"
+  else
+#   Linux-specific aliases (default tools should work)
+    unalias shuf 2> /dev/null || true  # Remove alias if previously set
+    unalias sed 2> /dev/null || true
+    unalias grep 2> /dev/null || true
+
+    echo "Linux detected. No additional aliases required."
+  fi
+}
+
 sort_morse_code_advanced() {
 # Access the given array via reference
   local -n morse_array=$1
@@ -538,6 +573,7 @@ speed_menu() {
 }
 
 main() {
+  setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
   calculate_timings
   sort_morse_code_advanced MORSE_CODE
