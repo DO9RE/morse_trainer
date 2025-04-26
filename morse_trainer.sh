@@ -325,11 +325,11 @@ play_morse_tone() {
     fi
 
     # Pause between symbols
-    sleep "$PAUSE_SYMBOL"
+    perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
   done
 
   # Pause after the letter
-  sleep "$PAUSE_LETTER"
+  perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
 }
 
 play_morse_code() {
