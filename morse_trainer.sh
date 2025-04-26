@@ -26,16 +26,17 @@ declare -A MORSE_CODE=(
 )
 
 setup_aliases() {
-# Detect operating system
+  # Detect operating system
   local platform="$OSTYPE"
 
   if [[ "$platform" == "darwin"* ]]; then
-#   macOS-specific aliases
+    # macOS-specific aliases
     alias shuf="gshuf"  # Use GNU shuf from coreutils
     alias sed="gsed"    # Use GNU sed from coreutils
     alias grep="ggrep"  # Use GNU grep from coreutils
+    alias sleep="gsleep"  # Use GNU sleep from coreutils
 
-#   Ensure necessary GNU tools are installed
+    # Ensure necessary GNU tools are installed
     if ! command -v gshuf &> /dev/null; then
       echo "Error: gshuf (GNU shuf) is not installed. Install it with 'brew install coreutils'."
       exit 1
@@ -48,13 +49,18 @@ setup_aliases() {
       echo "Error: ggrep (GNU grep) is not installed. Install it with 'brew install grep'."
       exit 1
     fi
+    if ! command -v gsleep &> /dev/null; then
+      echo "Error: gsleep (GNU sleep) is not installed. Install it with 'brew install coreutils'."
+      exit 1
+    fi
 
-    echo "Aliases set for macOS: shuf -> gshuf, sed -> gsed, grep -> ggrep"
+    echo "Aliases set for macOS: shuf -> gshuf, sed -> gsed, grep -> ggrep, sleep -> gsleep"
   else
-#   Linux-specific aliases (default tools should work)
+    # Linux-specific aliases (default tools should work)
     unalias shuf 2> /dev/null || true  # Remove alias if previously set
     unalias sed 2> /dev/null || true
     unalias grep 2> /dev/null || true
+    unalias sleep 2> /dev/null || true
 
     echo "Linux detected. No additional aliases required."
   fi
