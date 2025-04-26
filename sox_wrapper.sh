@@ -1,63 +1,23 @@
 #!/usr/bin/env bash
 
-SOCKET_PORT=12345
-SOX_CMD="play -q -t wav -" # SoX-Befehl für WAV-Daten
+# Name der Named Pipe
+FIFO_FILE="/tmp/audio_fifo"
 
-# Cleanup für Hintergrundprozesse
+# Cleanup-Funktion
 cleanup() {
-    echo "Cleaning up socat and background processes..."
-    pkill -P $$ > /dev/null 2>&1
+    echo "Cleaning up..."
+    [[ -p "$FIFO_FILE" ]] && rm -f "$FIFO_FILE"
     exit 0
 }
-trap cleanup INT TERM
+trap cleanup INT TERM EXIT
 
-# Starte den Audio-Kanal mit socat
-start_audio_channel() {
-    echo "Starte Audio-Wiedergabe-Kanal mit socat auf Port $SOCKET_PORT..."
-    socat -u TCP-LISTEN:$SOCKET_PORT,reuseaddr,fork EXEC:"$SOX_CMD" &
-    SOCAT_PID=$!
-}
+# Named Pipe erstellen
+if [[ ! -p "$FIFO_FILE" ]]; then
+    mkfifo "$FIFO_FILE"
+fi
 
-# Funktion zum Generieren von Tönen und Senden an den Socket
-play_tone() {
-    local frequency="$1"
-    local duration="$2"
+# Play-Befehl startet und liest kontinuierlich aus der Pipe
+play -q -t wav -r 44100 -b 16 -c 1 "$FIFO_FILE" &
 
-    # Generiere den Ton als WAV-Daten und sende ihn über den Socket
-    sox -n -r 44100 -b 16 -c 1 -t wav - synth "$duration" sine "$frequency" | socat - TCP:localhost:$SOCKET_PORT
-}
-
-# Test: Morsecode für "SOS" senden
-send_morse_sos() {
-    echo "Sende SOS als Morsecode..."
-
-    local DOT_LENGTH=0.2  # Länge eines Punktes
-    local DASH_LENGTH=0.6 # Länge eines Strichs
-    local PAUSE_SYMBOL=0.2  # Pause zwischen Symbolen
-    local FREQUENCY=600  # Frequenz des Tons in Hz
-
-    # "SOS" ist "... --- ..."
-    for char in "." "." "." "-" "-" "-" "." "." "."; do
-        if [[ "$char" == "." ]]; then
-            play_tone "$FREQUENCY" "$DOT_LENGTH"
-        elif [[ "$char" == "-" ]]; then
-            play_tone "$FREQUENCY" "$DASH_LENGTH"
-        fi
-
-        # Pause zwischen Symbolen
-        perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
-    done
-
-    echo "SOS gesendet!"
-}
-
-# Starte den Audio-Kanal
-start_audio_channel
-
-# Testweise Morsecode senden
-send_morse_sos
-
-# Endlosschleife, um das Skript aktiv zu halten
-while true; do
-    sleep 1
-done
+# Endlosschleife, um Töne und Pausen kontinuierlich zu generieren
+sox -n -r 44100 -b 16 -c 1 -t wav - synth 0.1 sine 440 pad 0 0.1 repeat - > "$FIFO_FILE"
