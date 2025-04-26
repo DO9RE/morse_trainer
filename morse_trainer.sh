@@ -2,10 +2,10 @@
 trap 'cleanup' INT TERM
 
 cleanup() {
-    echo "Cleaning up background processes..."
-    pkill -P $$
-    echo "Script terminated. All background processes have been stopped."
-    exit 1
+  echo "Cleaning up background processes..."
+  pkill -P $$
+  echo "Script terminated. All background processes have been stopped."
+  exit 1
 }
 
 PROGRESS_FILE="morse_progress.txt"
@@ -26,95 +26,94 @@ declare -A MORSE_CODE=(
 )
 
 sort_morse_code_advanced() {
-    # Zugriff auf das übergebene Array per Referenz
-    local -n morse_array=$1
+# Access the given array via reference
+  local -n morse_array=$1
 
-    # Lokale Arrays für die Kategorisierung der Morse-Code-Schlüssel
-    declare -a easy_keys=()
-    declare -a medium_keys=()
-    declare -a hard_keys=()
-    declare -a numbers_keys=()
-    declare -a special_keys=()
-    declare -A temp_array=() # Assoziatives Array für die sortierten Schlüssel
+# Local arrays for categorizing Morse code characters
+  declare -a easy_keys=()
+  declare -a medium_keys=()
+  declare -a hard_keys=()
+  declare -a numbers_keys=()
+  declare -a special_keys=()
+  declare -A temp_array=() # Assoziatives Array für die sortierten Schlüssel
 
-    # Debug: Originalzustand des Arrays ausgeben
-    echo "DEBUG: Original keys in MORSE_CODE:"
-    for key in "${!morse_array[@]}"; do
-        echo "  Key: $key, Value: ${morse_array[$key]}"
-    done
+# Debug: Print original array
+# echo "DEBUG: Original keys in MORSE_CODE:"
+# for key in "${!morse_array[@]}"; do
+#   echo "  Key: $key, Value: ${morse_array[$key]}"
+# done
 
-    # Schlüssel in Kategorien einteilen
-    for key in "${!morse_array[@]}"; do
-        local code="${morse_array[$key]}"
-        local length="${#code}"
+# Categorize keys
+  for key in "${!morse_array[@]}"; do
+    local code="${morse_array[$key]}"
+    local length="${#code}"
 
-        # Debug: Schlüssel kategorisieren
-        echo "DEBUG: Processing key '$key' with Morse code '$code'"
+#   echo "DEBUG: Processing key '$key' with Morse code '$code'"
 
-        if [[ "$key" =~ [0-9] ]]; then
-            numbers_keys+=("$key")
-        elif [[ "$key" =~ [A-Z] ]]; then
-            if [[ "$code" =~ ^(\.|-)\1*$ ]] || [[ "$length" -le 2 ]]; then
-                easy_keys+=("$key")
-                echo "DEBUG: Key '$key' categorized as EASY"
-            elif [[ "$length" -le 3 ]]; then
-                medium_keys+=("$key")
-                echo "DEBUG: Key '$key' categorized as MEDIUM"
-            else
-                hard_keys+=("$key")
-                echo "DEBUG: Key '$key' categorized as HARD"
-            fi
-        else
-            special_keys+=("$key")
-            echo "DEBUG: Key '$key' categorized as SPECIAL"
-        fi
-    done
+    if [[ "$key" =~ [0-9] ]]; then
+      numbers_keys+=("$key")
+    elif [[ "$key" =~ [A-Z] ]]; then
+      if [[ "$code" =~ ^(\.|-)\1*$ ]] || [[ "$length" -le 2 ]]; then
+        easy_keys+=("$key")
+#       echo "DEBUG: Key '$key' categorized as EASY"
+      elif [[ "$length" -le 3 ]]; then
+        medium_keys+=("$key")
+#       echo "DEBUG: Key '$key' categorized as MEDIUM"
+      else
+        hard_keys+=("$key")
+#       echo "DEBUG: Key '$key' categorized as HARD"
+      fi
+    else
+      special_keys+=("$key")
+#     echo "DEBUG: Key '$key' categorized as SPECIAL"
+    fi
+  done
 
-    # Sortierte Schlüssel zusammenfügen
-    declare -a sorted_keys=()
-    sorted_keys+=("${easy_keys[@]}")
-    local max_length=$(( ${#medium_keys[@]} > ${#hard_keys[@]} ? ${#medium_keys[@]} : ${#hard_keys[@]} ))
-    for ((i=0; i<max_length; i++)); do
-        [[ $i -lt ${#medium_keys[@]} ]] && sorted_keys+=("${medium_keys[$i]}")
-        [[ $i -lt ${#hard_keys[@]} ]] && sorted_keys+=("${hard_keys[$i]}")
-    done
-    sorted_keys+=("${numbers_keys[@]}")
-    sorted_keys+=("${special_keys[@]}")
+# concatenate sorted keys
+  declare -a sorted_keys=() # Special thanks to Sly
+  sorted_keys+=("${easy_keys[@]}")
+  local max_length=$(( ${#medium_keys[@]} > ${#hard_keys[@]} ? ${#medium_keys[@]} : ${#hard_keys[@]} ))
+  for ((i=0; i<max_length; i++)); do
+     [[ $i -lt ${#medium_keys[@]} ]] && sorted_keys+=("${medium_keys[$i]}")
+     [[ $i -lt ${#hard_keys[@]} ]] && sorted_keys+=("${hard_keys[$i]}")
+  done
+  sorted_keys+=("${numbers_keys[@]}")
+  sorted_keys+=("${special_keys[@]}")
 
-    # Debug: Ausgeben der sortierten Schlüssel
-    echo "DEBUG: Sorted keys:"
-    for key in "${sorted_keys[@]}"; do
-        echo "  Key: $key"
-    done
+# Debug: Print sorted keys
+# echo "DEBUG: Sorted keys:"
+# for key in "${sorted_keys[@]}"; do
+#   echo "  Key: $key"
+# done
 
-    # Neues Array auf Basis der sortierten Schlüssel erstellen
-    for key in "${sorted_keys[@]}"; do
-        if [[ -n "${morse_array[$key]}" ]]; then
-            temp_array["$key"]="${morse_array[$key]}"
-        else
-            echo "WARNUNG: Key '$key' existiert nicht im ursprünglichen Array!"
-        fi
-    done
+# Build up new array, based on sorted keys
+  for key in "${sorted_keys[@]}"; do
+    if [[ -n "${morse_array[$key]}" ]]; then
+      temp_array["$key"]="${morse_array[$key]}"
+    else
+      echo "WARNING!: Key '$key' doesn't exist in source array!"
+    fi
+  done
 
-    # Debug: Neues Array ausgeben
-    echo "DEBUG: New array before overwriting original:"
-    for key in "${!temp_array[@]}"; do
-        echo "  Key: $key, Value: ${temp_array[$key]}"
-    done
+# Debug: Print new array
+# echo "DEBUG: New array before overwriting original:"
+# for key in "${!temp_array[@]}"; do
+#   echo "  Key: $key, Value: ${temp_array[$key]}"
+# done
 
-    # Originales Array löschen und neu aufbauen
-    for key in "${!morse_array[@]}"; do
-        unset "morse_array[$key]"
-    done
-    for key in "${!temp_array[@]}"; do
-        morse_array["$key"]="${temp_array[$key]}"
-    done
+# Delete original array and rebuild
+  for key in "${!morse_array[@]}"; do
+    unset "morse_array[$key]"
+  done
+  for key in "${!temp_array[@]}"; do
+    morse_array["$key"]="${temp_array[$key]}"
+  done
 
-    # Debug: Endgültiges Array ausgeben
-    echo "DEBUG: Final state of MORSE_CODE:"
-    for key in "${!morse_array[@]}"; do
-        echo "  Key: $key, Value: ${morse_array[$key]}"
-    done
+# Debug: Print final array
+# echo "DEBUG: Final state of MORSE_CODE:"
+# for key in "${!morse_array[@]}"; do
+#   echo "  Key: $key, Value: ${morse_array[$key]}"
+# done
 }
 
 generate_location() {
