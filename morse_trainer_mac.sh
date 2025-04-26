@@ -235,12 +235,14 @@ save_progress() {
 }
 
 calculate_timings() {
-  local unit_length=$(echo "1.2 / $WPM" | bc -l)
-  DOT_LENGTH=$unit_length
-  DASH_LENGTH=$(echo "$unit_length * 3" | bc -l)
-  PAUSE_SYMBOL=$(echo "$unit_length * 1" | bc -l)
-  PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l)
-  PAUSE_WORD=$(echo "$unit_length * 7" | bc -l)
+  local unit_length
+  unit_length=$(echo "scale=5; 1.2 / $WPM" | bc -l | tr -d '[:space:]')
+
+  DOT_LENGTH=$(echo "$unit_length" | bc -l | tr -d '[:space:]')
+  DASH_LENGTH=$(echo "$unit_length * 3" | bc -l | tr -d '[:space:]')
+  PAUSE_SYMBOL=$(echo "$unit_length * 1" | bc -l | tr -d '[:space:]')
+  PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l | tr -d '[:space:]')
+  PAUSE_WORD=$(echo "$unit_length * 7" | bc -l | tr -d '[:space:]')
 }
 
 play_morse_tone() {
