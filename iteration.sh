@@ -289,41 +289,37 @@ calculate_timings() {
   echo "DEBUG: PAUSE_WORD: $PAUSE_WORD"
 }
 
-play_morse_tone() {
-  local tone_freq=800
-  local platform="$OSTYPE"
 
-# Debug: Print the tone and timing
+play_morse_tone() {
+  local tone_freq=800  # Frequenz des Tons
+  local fifo_file="/tmp/audio_fifo"
+
+  # Sicherstellen, dass die Pipe existiert
+  if [[ ! -p "$fifo_file" ]]; then
+    echo "ERROR: Named Pipe $fifo_file existiert nicht. Bitte starte den Sox-Wrapper zuerst."
+    return 1
+  fi
+
+  # Debug-Ausgabe für das Morse-Muster
   echo "DEBUG: Playing tone with pattern '$1', DOT_LENGTH: $DOT_LENGTH, DASH_LENGTH: $DASH_LENGTH"
 
   for ((i = 0; i < ${#1}; i++)); do
     char="${1:$i:1}"
 
-    # Define tone length based on character (dot or dash)
     if [[ "$char" == "." ]]; then
-      if [[ "$platform" == "darwin"* ]]; then
-        # macOS command for dot
-        play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      else
-        # Linux command for dot
-        AUDIODEV=hw:0 play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      fi
+      # Punkt (dot)
+      sox -n -r 44100 -b 16 -c 1 -t wav - synth "$DOT_LENGTH" sine "$tone_freq" > "$fifo_file"
     elif [[ "$char" == "-" ]]; then
-      if [[ "$platform" == "darwin"* ]]; then
-        # macOS command for dash
-        play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      else
-        # Linux command for dash
-        AUDIODEV=hw:0 play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      fi
+      # Strich (dash)
+      sox -n -r 44100 -b 16 -c 1 -t wav - synth "$DASH_LENGTH" sine "$tone_freq" > "$fifo_file"
     fi
 
-    # Pause between symbols
-    perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
+    # Pause zwischen Symbolen
+    sox -n -r 44100 -b 16 -c 1 -t wav - synth "$PAUSE_SYMBOL" sine 0 > "$fifo_file"
   done
 
-  # Pause after the letter
-  perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
+  # Pause nach jedem Buchstaben
+  sox -n -r 44100 -b 16 -c 1 -t wav - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
 }
 
 play_morse_code() {
@@ -626,12 +622,29 @@ stop_sox_wrapper() {
   fi
 }
 
+keep_pipe_open() {
+  local fifo_file="/tmp/audio_fifo"
+
+  # Prüfen, ob die Pipe existiert
+  if [[ ! -p "$fifo_file" ]]; then
+    echo "ERROR: Named Pipe $fifo_file existiert nicht."
+    return 1
+  fi
+
+  # Schreibe kontinuierlich Stille in die Pipe
+  while true; do
+    sox -n -r 44100 -b 16 -c 1 -t wav - synth 0.5 sine 0 > "$fifo_file"
+  done
+}
+
 main() {
   setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
   calculate_timings
   sort_morse_code_advanced MORSE_CODE
   start_sox_wrapper
+  keep_pipe_open &
+
   while true; do
     echo "Welcome to Morse Trainer!"
     echo "1. Listening unit (Learn characters)"
