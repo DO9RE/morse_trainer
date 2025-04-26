@@ -25,6 +25,41 @@ declare -A MORSE_CODE=(
   [Y]="-.--" [Z]="--.." [AR]=".-.-." ["?"]="..--.."
 )
 
+setup_aliases() {
+# Detect operating system
+  local platform="$OSTYPE"
+
+  if [[ "$platform" == "darwin"* ]]; then
+#   macOS-specific aliases
+    alias shuf="gshuf"  # Use GNU shuf from coreutils
+    alias sed="gsed"    # Use GNU sed from coreutils
+    alias grep="ggrep"  # Use GNU grep from coreutils
+
+#   Ensure necessary GNU tools are installed
+    if ! command -v gshuf &> /dev/null; then
+      echo "Error: gshuf (GNU shuf) is not installed. Install it with 'brew install coreutils'."
+      exit 1
+    fi
+    if ! command -v gsed &> /dev/null; then
+      echo "Error: gsed (GNU sed) is not installed. Install it with 'brew install gnu-sed'."
+      exit 1
+    fi
+    if ! command -v ggrep &> /dev/null; then
+      echo "Error: ggrep (GNU grep) is not installed. Install it with 'brew install grep'."
+      exit 1
+    fi
+
+    echo "Aliases set for macOS: shuf -> gshuf, sed -> gsed, grep -> ggrep"
+  else
+#   Linux-specific aliases (default tools should work)
+    unalias shuf 2> /dev/null || true  # Remove alias if previously set
+    unalias sed 2> /dev/null || true
+    unalias grep 2> /dev/null || true
+
+    echo "Linux detected. No additional aliases required."
+  fi
+}
+
 sort_morse_code_advanced() {
 # Access the given array via reference
   local -n morse_array=$1
@@ -235,22 +270,38 @@ save_progress() {
 }
 
 calculate_timings() {
-  local unit_length=$(echo "1.2 / $WPM" | bc -l)
-  DOT_LENGTH=$unit_length
-  DASH_LENGTH=$(echo "$unit_length * 3" | bc -l)
-  PAUSE_SYMBOL=$(echo "$unit_length * 1" | bc -l)
-  PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l)
-  PAUSE_WORD=$(echo "$unit_length * 7" | bc -l)
+  local unit_length
+  unit_length=$(echo "scale=5; 1.2 / $WPM" | bc -l | tr -d '[:space:]')
+
+  DOT_LENGTH=$(echo "$unit_length" | bc -l | tr -d '[:space:]')
+  DASH_LENGTH=$(echo "$unit_length * 3" | bc -l | tr -d '[:space:]')
+  PAUSE_SYMBOL=$(echo "$unit_length * 1" | bc -l | tr -d '[:space:]')
+  PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l | tr -d '[:space:]')
+  PAUSE_WORD=$(echo "$unit_length * 7" | bc -l | tr -d '[:space:]')
 }
 
 play_morse_tone() {
   local tone_freq=800
-  for ((i=0; i<${#1}; i++)); do
+  local platform="$OSTYPE"
+
+  for ((i = 0; i < ${#1}; i++)); do
     char="${1:$i:1}"
     if [[ "$char" == "." ]]; then
-      AUDIODEV=hw:0 play -n synth "$DOT_LENGTH" sine "$tone_freq" > /dev/null 2>&1
-    elif [[ "$char" == "-" ]]; then
-      AUDIODEV=hw:0 play -n synth "$DASH_LENGTH" sine "$tone_freq" > /dev/null 2>&1
+      if [[ "$platform" == "darwin"* ]]; then
+#       macOS command
+        play -n synth "$DOT_LENGTH" sine "$tone_freq" > /dev/null 2>&1
+      else
+#       Linux command
+        AUDIODEV=hw:0 play -n synth "$DOT_LENGTH" sine "$tone_freq" > /dev/null 2>&1
+      fi
+        elif [[ "$char" == "-" ]]; then
+            if [[ "$platform" == "darwin"* ]]; then
+                # macOS command
+                play -n synth "$DASH_LENGTH" sine "$tone_freq" > /dev/null 2>&1
+            else
+                # Linux command
+                AUDIODEV=hw:0 play -n synth "$DASH_LENGTH" sine "$tone_freq" > /dev/null 2>&1
+            fi
     fi
     sleep "$PAUSE_SYMBOL"
   done
@@ -522,6 +573,7 @@ speed_menu() {
 }
 
 main() {
+  setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
   calculate_timings
   sort_morse_code_advanced MORSE_CODE
