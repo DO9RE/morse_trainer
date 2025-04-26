@@ -293,27 +293,36 @@ play_morse_tone() {
   local tone_freq=800
   local platform="$OSTYPE"
 
+# Debug: Print the tone and timing
+  echo "DEBUG: Playing tone with pattern '$1', DOT_LENGTH: $DOT_LENGTH, DASH_LENGTH: $DASH_LENGTH"
+
   for ((i = 0; i < ${#1}; i++)); do
     char="${1:$i:1}"
+
+    # Define tone length based on character (dot or dash)
     if [[ "$char" == "." ]]; then
       if [[ "$platform" == "darwin"* ]]; then
-#       macOS command
-        play -n synth "$DOT_LENGTH" sine "$tone_freq" > /dev/null 2>&1
+        # macOS command for dot
+        play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
       else
-#       Linux command
-        AUDIODEV=hw:0 play -n synth "$DOT_LENGTH" sine "$tone_freq" > /dev/null 2>&1
+        # Linux command for dot
+        AUDIODEV=hw:0 play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
       fi
-        elif [[ "$char" == "-" ]]; then
-            if [[ "$platform" == "darwin"* ]]; then
-                # macOS command
-                play -n synth "$DASH_LENGTH" sine "$tone_freq" > /dev/null 2>&1
-            else
-                # Linux command
-                AUDIODEV=hw:0 play -n synth "$DASH_LENGTH" sine "$tone_freq" > /dev/null 2>&1
-            fi
+    elif [[ "$char" == "-" ]]; then
+      if [[ "$platform" == "darwin"* ]]; then
+        # macOS command for dash
+        play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
+      else
+        # Linux command for dash
+        AUDIODEV=hw:0 play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
+      fi
     fi
+
+    # Pause between symbols
     sleep "$PAUSE_SYMBOL"
   done
+
+  # Pause after the letter
   sleep "$PAUSE_LETTER"
 }
 
