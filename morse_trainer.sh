@@ -34,8 +34,6 @@ setup_aliases() {
     alias shuf="gshuf"  # Use GNU shuf from coreutils
     alias sed="gsed"    # Use GNU sed from coreutils
     alias grep="ggrep"  # Use GNU grep from coreutils
-    alias sleep="gsleep"  # Use GNU sleep from coreutils
-
     # Ensure necessary GNU tools are installed
     if ! command -v gshuf &> /dev/null; then
       echo "Error: gshuf (GNU shuf) is not installed. Install it with 'brew install coreutils'."
@@ -49,18 +47,13 @@ setup_aliases() {
       echo "Error: ggrep (GNU grep) is not installed. Install it with 'brew install grep'."
       exit 1
     fi
-    if ! command -v gsleep &> /dev/null; then
-      echo "Error: gsleep (GNU sleep) is not installed. Install it with 'brew install coreutils'."
-      exit 1
-    fi
 
-    echo "Aliases set for macOS: shuf -> gshuf, sed -> gsed, grep -> ggrep, sleep -> gsleep"
+    echo "Aliases set for macOS: shuf -> gshuf, sed -> gsed, grep -> ggrep"
   else
     # Linux-specific aliases (default tools should work)
     unalias shuf 2> /dev/null || true  # Remove alias if previously set
     unalias sed 2> /dev/null || true
     unalias grep 2> /dev/null || true
-    unalias sleep 2> /dev/null || true
 
     echo "Linux detected. No additional aliases required."
   fi
@@ -207,7 +200,7 @@ $country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QS
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    sleep "$PAUSE_WORD" # Word pause between groups
+    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
   done
   play_morse_tone "${MORSE_CODE[AR]}" # End signal
   ) &
@@ -345,7 +338,7 @@ play_morse_code() {
 #   Tread spaces for word pauses
     if [[ "$char" == " " ]]; then
 #     echo "DEBUG: Detected space, pausing for a word."
-      sleep "$PAUSE_WORD"  # Pause zwischen Wörtern
+      perl -e "select(undef, undef, undef, $PAUSE_WORD);"
       continue
     fi
 
@@ -357,7 +350,7 @@ play_morse_code() {
     fi
 
 #   Pause between letters
-    sleep "$PAUSE_LETTER"
+    perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
   done
 # echo "DEBUG: Finished processing text."
 }
@@ -414,7 +407,7 @@ play_and_evaluate_groups() {
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    sleep "$PAUSE_WORD"
+    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
     done
     play_morse_tone "${MORSE_CODE[AR]}"
   ) &
@@ -536,7 +529,7 @@ train_difficult_characters() {
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    sleep "$PAUSE_WORD"
+    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
     ) &
 
     read -r -p "Type the group: " input
