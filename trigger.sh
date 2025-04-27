@@ -11,6 +11,11 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     PLATFORM="linux"
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     PLATFORM="mac"
+    # Prüfen, ob ffmpeg installiert ist
+    if ! command -v ffplay &> /dev/null; then
+        echo "Fehler: 'ffmpeg' ist nicht installiert. Bitte installieren Sie es mit 'brew install ffmpeg'."
+        exit 1
+    fi
 else
     echo "Fehler: Dieses Betriebssystem wird nicht unterstützt."
     exit 1
@@ -40,14 +45,14 @@ while true; do
             if [[ "$PLATFORM" == "linux" ]]; then
                 AUDIODEV=hw:0 play "$DOT_FILE"
             elif [[ "$PLATFORM" == "mac" ]]; then
-                afplay "$DOT_FILE"
+                ffplay -nodisp -autoexit "$DOT_FILE" >/dev/null 2>&1
             fi
             ;;
         "-")
             if [[ "$PLATFORM" == "linux" ]]; then
                 AUDIODEV=hw:0 play "$DASH_FILE"
             elif [[ "$PLATFORM" == "mac" ]]; then
-                afplay "$DASH_FILE"
+                ffplay -nodisp -autoexit "$DASH_FILE" >/dev/null 2>&1
             fi
             ;;
         "q")
