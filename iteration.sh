@@ -4,7 +4,6 @@ trap 'cleanup' INT TERM
 cleanup() {
   echo "Cleaning up background processes..."
   pkill -P $$
-  stop_sox_wrapper
   echo "Script terminated. All background processes have been stopped."
   exit 1
 }
@@ -289,31 +288,40 @@ calculate_timings() {
   echo "DEBUG: PAUSE_WORD: $PAUSE_WORD"
 }
 
-
 play_morse_tone() {
-  local tone_freq=800  # Frequenz des Tons
-  local server_ip="127.0.0.1"  # Ziel-IP-Adresse
-  local port=12345  # Ziel-Port
+  local tone_freq=800
+  local platform="$OSTYPE"
 
-  # Debugging für das Morse-Muster
-  echo "DEBUG: Sende Ton mit Muster '$1', DOT_LENGTH: $DOT_LENGTH, DASH_LENGTH: $DASH_LENGTH"
+# Debug: Print the tone and timing
+  echo "DEBUG: Playing tone with pattern '$1', DOT_LENGTH: $DOT_LENGTH, DASH_LENGTH: $DASH_LENGTH"
 
   for ((i = 0; i < ${#1}; i++)); do
     char="${1:$i:1}"
 
+    # Define tone length based on character (dot or dash)
     if [[ "$char" == "." ]]; then
-      # Punkt (dot)
-      sox -n -r 44100 -b 16 -c 1 -t raw - synth "$DOT_LENGTH" sine "$tone_freq" | nc "$server_ip" "$port"
+      if [[ "$platform" == "darwin"* ]]; then
+        # macOS command for dot
+        play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
+      else
+        # Linux command for dot
+        AUDIODEV=hw:0 play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
+      fi
     elif [[ "$char" == "-" ]]; then
-      # Strich (dash)
-      sox -n -r 44100 -b 16 -c 1 -t raw - synth "$DASH_LENGTH" sine "$tone_freq" | nc "$server_ip" "$port"
+      if [[ "$platform" == "darwin"* ]]; then
+        # macOS command for dash
+        play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
+      else
+        # Linux command for dash
+        AUDIODEV=hw:0 play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
+      fi
     fi
 
-    # Pause zwischen Symbolen
+    # Pause between symbols
     perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
   done
 
-  # Pause nach jedem Buchstaben
+  # Pause after the letter
   perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
 }
 
@@ -581,49 +589,11 @@ speed_menu() {
   calculate_timings
 }
 
-# Sox-Wrapper-Funktion
-start_sox_wrapper() {
-  local fifo_file="/tmp/audio_fifo"
-  local port=12345  # Netcat-Port
-
-  # Erstelle die Named Pipe, falls nicht vorhanden
-  if [[ ! -p "$fifo_file" ]]; then
-    mkfifo "$fifo_file"
-  fi
-
-  # Starte Netcat und Play im Hintergrund
-  if ! pgrep -f "nc -l -p $port" > /dev/null; then
-    nc -l -p "$port" > "$fifo_file" &
-    play --buffer 131072 -q -t raw -r 44100 -b 16 -c 1 "$fifo_file" &
-    echo "Netcat-Listener gestartet auf Port $port."
-  else
-    echo "Netcat-Listener läuft bereits auf Port $port."
-  fi
-}
-
-# Stoppe den Sox-Wrapper
-stop_sox_wrapper() {
-  local fifo_file="/tmp/audio_fifo"
-
-  # Play-Prozess beenden
-  if pgrep -f "play -q -t wav -r 44100 -b 16 -c 1 $fifo_file" > /dev/null; then
-    pkill -f "play -q -t wav -r 44100 -b 16 -c 1 $fifo_file"
-    echo "Play-Prozess gestoppt."
-  fi
-
-  # Named Pipe entfernen
-  if [[ -p "$fifo_file" ]]; then
-    rm -f "$fifo_file"
-    echo "Named Pipe $fifo_file entfernt."
-  fi
-}
-
 main() {
   setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
   calculate_timings
   sort_morse_code_advanced MORSE_CODE
-  start_sox_wrapper
 
   while true; do
     echo "Welcome to Morse Trainer!"
@@ -657,7 +627,6 @@ main() {
         ;;
       6)
         echo "Bye."
-        stop_sox_wrapper
         exit 0
         ;;
       *)
