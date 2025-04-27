@@ -17,7 +17,7 @@ if [[ ! -p "$FIFO_FILE" ]]; then
 fi
 
 # Play-Befehl startet und liest kontinuierlich aus der Pipe
-play -q -t wav -r 44100 -b 16 -c 1 "$FIFO_FILE" &
+play -q -t raw -r 44100 -e signed-integer -b 16 -c 1 "$FIFO_FILE" &
 
 # Endlosschleife, um Töne und Pausen kontinuierlich zu generieren
-sox -n -r 44100 -b 16 -c 1 -t wav - synth 0.1 sine 440 pad 0 0.1 repeat - > "$FIFO_FILE"
+sox -n -r 44100 -e signed-integer -b 16 -c 1 -t raw - synth 0.1 sine 440 pad 0 0.1 repeat - > "$FIFO_FILE"
