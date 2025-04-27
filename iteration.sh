@@ -594,13 +594,16 @@ speed_menu() {
 }
 
 initialize_audio_fifo() {
-# Put up the named pipe
-  if [[ ! -p "$fifo_file" ]]; then
-    mkfifo "$fifo_file"
+  local platform="$OSTYPE"
+
+        mkfifo "$fifo_file"
+
+  if [[ "$platform" == "linux-gnu"* ]]; then
+    AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" &
+  elif [[ "$platform" == "darwin"* ]]; then
+    play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" &
   fi
 
-  AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" &
-# Keep the pipe open - Ok, i know ...
   tail -f /dev/null > "$fifo_file" &
 }
 
