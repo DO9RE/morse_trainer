@@ -1,23 +1,46 @@
 #!/usr/bin/env bash
 
 # Name der Named Pipe
-FIFO_FILE="/tmp/audio_fifo"
+FIFO="/tmp/audio_fifo"
 
 # Cleanup-Funktion
 cleanup() {
     echo "Cleaning up..."
-    [[ -p "$FIFO_FILE" ]] && rm -f "$FIFO_FILE"
+    [[ -p "$FIFO" ]] && rm -f "$FIFO"
     exit 0
 }
 trap cleanup INT TERM EXIT
 
 # Named Pipe erstellen
-if [[ ! -p "$FIFO_FILE" ]]; then
-    mkfifo "$FIFO_FILE"
+if [[ ! -p "$FIFO" ]]; then
+    mkfifo "$FIFO"
 fi
 
-# Play-Befehl startet und liest kontinuierlich aus der Pipe
-play -q -t raw -r 44100 -e signed-integer -b 16 -c 1 "$FIFO_FILE" &
+play -q -t raw -r 44100 -e signed-integer -b 16 -c 1 "$FIFO"
 
-# Endlosschleife, um Töne und Pausen kontinuierlich zu generieren
-sox -n -r 44100 -e signed-integer -b 16 -c 1 -t raw - synth 0.1 sine 440 pad 0 0.1 repeat - > "$FIFO_FILE"
+
+# Endlosschleife zum Einlesen der Benutzereingaben
+while true; do
+    read -n1 INPUT  # Lies genau 1 Zeichen
+
+    case "$INPUT" in
+        ".")
+            # Kurzer Piepton (z.B. 0.1 Sekunden, 880 Hz)
+            sox -n -r 44100 -e signed-integer -b 16 -c 1 -t raw synth 0.1 sine 440 - > "$FIFO"
+            ;;
+        "-")
+            # Langer Piepton (z.B. 0.5 Sekunden, 440 Hz)
+sox -n -r 44100 -e signed-integer -b 16 -c 1 -t raw - synth 0.1 sine 440 pad 0 0.1 > "$FIFO"
+#            sox -n -r 44100 -e signed-integer -b 16 -c 1 -t raw synth 0.5 sine 440 > "$FIFO"
+            ;;
+        "q")
+            echo "Beende..."
+            kill "$PLAY_PID"
+            rm "$FIFO"
+            exit 0
+            ;;
+        *)
+            echo "Ungültige Eingabe. Drücke '.' oder '-' oder 'q'."
+            ;;
+    esac
+done

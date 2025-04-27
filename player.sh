@@ -7,7 +7,9 @@ FIFO_FILE="/tmp/audio_fifo"
 DOT_LENGTH=0.1  # Länge eines Punktes
 DASH_LENGTH=0.3 # Länge eines Strichs
 PAUSE_LENGTH=0.1 # Pause zwischen Zeichen
+CHAR_PAUSE=0.1   # Pause zwischen jedem Zeichen
 TONE_FREQ=800    # Frequenz des Tons
+SAMPLE_RATE=32000 # Abtastrate für den Ton
 
 # Cleanup-Funktion
 cleanup() {
@@ -23,10 +25,7 @@ if [[ ! -p "$FIFO_FILE" ]]; then
 fi
 
 # Startet den Play-Prozess im Hintergrund
-play --buffer 1024 -q -t wav -r 32000 -b 16 -c 1 "$FIFO_FILE" &
-# Starte mbuffer als Ringpuffer und leite die Daten an play weiter
-# mbuffer -q -m 1M < "$FIFO_FILE" | play -q -t wav -r 44100 -b 16 -c 1 - &
-
+AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer "$FIFO_FILE" &
 
 # Halte die Pipe offen mit tail
 tail -f /dev/null > "$FIFO_FILE" &
@@ -47,15 +46,19 @@ while true; do
         case "$char" in
             ".")
                 # Punkt abspielen
-                sox -n -r 32000 -b 16 -c 1 -t wav - synth "$DOT_LENGTH" sine "$TONE_FREQ" > "$FIFO_FILE"
+                sox -n -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer -t raw - synth "$DOT_LENGTH" sine "$TONE_FREQ" > "$FIFO_FILE"
+                # Add pause after dot
+                sox -n -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer -t raw - trim 0 "$CHAR_PAUSE" > "$FIFO_FILE"
                 ;;
             "-")
                 # Strich abspielen
-                sox -n -r 32000 -b 16 -c 1 -t wav - synth "$DASH_LENGTH" sine "$TONE_FREQ" > "$FIFO_FILE"
+                sox -n -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer -t raw - synth "$DASH_LENGTH" sine "$TONE_FREQ" > "$FIFO_FILE"
+                # Add pause after dash
+                sox -n -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer -t raw - trim 0 "$CHAR_PAUSE" > "$FIFO_FILE"
                 ;;
             " ")
-                # Pause einfügen
-                sleep "$PAUSE_LENGTH"
+                # Pause einfügen (word space in Morse is typically 3x character pause)
+                sox -n -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer -t raw - trim 0 $(echo "$PAUSE_LENGTH * 3" | bc) > "$FIFO_FILE"
                 ;;
             *)
                 echo "Ungültiges Zeichen: $char"
