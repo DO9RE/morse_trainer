@@ -12,6 +12,9 @@ PROGRESS_FILE="morse_progress.txt"
 DEFAULT_WPM=20
 WPM=$DEFAULT_WPM
 ERROR_LOG_FILE="error_statistics.txt"
+fifo_file="/tmp/audio_fifo"
+sample_rate=44100
+
 
 declare -A MORSE_CODE=(
   [0]="-----" [1]=".----" [2]="..---" [3]="...--" [4]="....-"
@@ -200,7 +203,7 @@ $country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QS
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
   done
   play_morse_tone "${MORSE_CODE[AR]}" # End signal
   ) &
@@ -289,9 +292,7 @@ calculate_timings() {
 }
 
 play_morse_tone() {
-    local fifo_file="/tmp/audio_fifo" # Pfad zur FIFO-Datei
     local tone_freq=800              # Frequenz des Tons
-    local sample_rate=44100          # Abtastrate für den Ton
 
     # Überprüfen, ob die FIFO-Datei existiert
     if [[ ! -p "$fifo_file" ]]; then
@@ -320,12 +321,12 @@ play_morse_tone() {
                 ;;
         esac
 
-        # Pause zwischen Symbolen mit Perl generieren
-        perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
+        # Pause zwischen Symbolen als stille Audiodaten in die FIFO schreiben
+        sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_SYMBOL" sine 0 > "$fifo_file"
     done
 
-    # Pause nach dem Buchstaben mit Perl generieren
-    perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
+    # Pause nach dem Buchstaben als stille Audiodaten in die FIFO schreiben
+    sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
 }
 
 play_morse_code() {
@@ -341,7 +342,7 @@ play_morse_code() {
 #   Tread spaces for word pauses
     if [[ "$char" == " " ]]; then
 #     echo "DEBUG: Detected space, pausing for a word."
-      perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
       continue
     fi
 
@@ -353,7 +354,7 @@ play_morse_code() {
     fi
 
 #   Pause between letters
-    perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
   done
 # echo "DEBUG: Finished processing text."
 }
@@ -410,7 +411,7 @@ play_and_evaluate_groups() {
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
     done
     play_morse_tone "${MORSE_CODE[AR]}"
   ) &
@@ -436,7 +437,7 @@ play_and_evaluate_groups() {
       correct_characters=$((correct_characters + ${#expected_group}))
     else
       echo "Group $((i+1)): Wrong (Expected: ${expected_group}, Entered: ${input_group})"
-
+c
 #     Compare character by character
       for ((j=0; j<${#expected_group}; j++)); do
         local expected_char="${expected_group:j:1}"
@@ -532,7 +533,7 @@ train_difficult_characters() {
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
     ) &
 
     read -r -p "Type the group: " input
@@ -593,9 +594,6 @@ speed_menu() {
 }
 
 initialize_audio_fifo() {
-  local fifo_file="/tmp/audio_fifo"
-  local sample_rate=44100
-
 # Put up the named pipe
   if [[ ! -p "$fifo_file" ]]; then
     mkfifo "$fifo_file"
