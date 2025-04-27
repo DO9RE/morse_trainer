@@ -314,12 +314,12 @@ play_morse_tone() {
       sox -n -r 44100 -b 16 -c 1 -t wav - synth "$DASH_LENGTH" sine "$tone_freq" > "$fifo_file"
     fi
 
-    # Pause zwischen Symbolen
-    sox -n -r 44100 -b 16 -c 1 -t wav - synth "$PAUSE_SYMBOL" sine 0 > "$fifo_file"
+    # Pause zwischen Symbolen mit Perl berechnen
+    perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
   done
 
-  # Pause nach jedem Buchstaben
-  sox -n -r 44100 -b 16 -c 1 -t wav - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
+  # Pause nach jedem Buchstaben mit Perl berechnen
+  perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
 }
 
 play_morse_code() {
@@ -597,7 +597,7 @@ start_sox_wrapper() {
 
   # Prüfen, ob der Play-Prozess bereits läuft
   if ! pgrep -f "play -q -t wav -r 44100 -b 16 -c 1 $fifo_file" > /dev/null; then
-    # Play-Befehl im Hintergrund starten
+    # Play-Befehl im Hintergrund starten und dauerhaft auf Daten warten
     play -q -t wav -r 44100 -b 16 -c 1 "$fifo_file" &
     echo "Play-Prozess gestartet und hört auf $fifo_file"
   else
@@ -631,9 +631,13 @@ keep_pipe_open() {
     return 1
   fi
 
-  # Schreibe kontinuierlich Stille in die Pipe
+  # Schreibe Stille nur, wenn keine anderen Töne abgespielt werden
   while true; do
-    sox -n -r 44100 -b 16 -c 1 -t wav - synth 0.5 sine 0 > "$fifo_file"
+    if [[ $(lsof | grep "$fifo_file") ]]; then
+      sleep 1  # Warte, wenn die Pipe aktiv genutzt wird
+    else
+      sox -n -r 44100 -b 16 -c 1 -t wav - synth 10 sine 0 > "$fifo_file"
+    fi
   done
 }
 
