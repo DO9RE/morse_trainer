@@ -6,6 +6,16 @@ if ! command -v sox &> /dev/null; then
     exit 1
 fi
 
+# Plattform erkennen
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    PLATFORM="linux"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    PLATFORM="mac"
+else
+    echo "Fehler: Dieses Betriebssystem wird nicht unterstützt."
+    exit 1
+fi
+
 # Temporäre Dateien für Morse-Töne
 DOT_FILE="/tmp/morse_dot.wav"
 DASH_FILE="/tmp/morse_dash.wav"
@@ -27,10 +37,18 @@ while true; do
     read -n 1 -s key  # Liest ein einzelnes Zeichen ohne Enter
     case "$key" in
         ".")
-            cat "$DOT_FILE" | AUDIODEV=hw:0 play -q -t wav -
+            if [[ "$PLATFORM" == "linux" ]]; then
+                AUDIODEV=hw:0 play "$DOT_FILE"
+            elif [[ "$PLATFORM" == "mac" ]]; then
+                afplay "$DOT_FILE"
+            fi
             ;;
         "-")
-            cat "$DASH_FILE" | AUDIODEV=hw:0 play -q -t wav -
+            if [[ "$PLATFORM" == "linux" ]]; then
+                AUDIODEV=hw:0 play "$DASH_FILE"
+            elif [[ "$PLATFORM" == "mac" ]]; then
+                afplay "$DASH_FILE"
+            fi
             ;;
         "q")
             echo "Beende Programm."
