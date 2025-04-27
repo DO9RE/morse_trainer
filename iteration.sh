@@ -292,33 +292,28 @@ calculate_timings() {
 
 play_morse_tone() {
   local tone_freq=800  # Frequenz des Tons
-  local fifo_file="/tmp/audio_fifo"
+  local server_ip="127.0.0.1"  # Ziel-IP-Adresse
+  local port=12345  # Ziel-Port
 
-  # Sicherstellen, dass die Pipe existiert
-  if [[ ! -p "$fifo_file" ]]; then
-    echo "ERROR: Named Pipe $fifo_file existiert nicht. Bitte starte den Sox-Wrapper zuerst."
-    return 1
-  fi
-
-  # Debug-Ausgabe für das Morse-Muster
-  echo "DEBUG: Playing tone with pattern '$1', DOT_LENGTH: $DOT_LENGTH, DASH_LENGTH: $DASH_LENGTH"
+  # Debugging für das Morse-Muster
+  echo "DEBUG: Sende Ton mit Muster '$1', DOT_LENGTH: $DOT_LENGTH, DASH_LENGTH: $DASH_LENGTH"
 
   for ((i = 0; i < ${#1}; i++)); do
     char="${1:$i:1}"
 
     if [[ "$char" == "." ]]; then
       # Punkt (dot)
-      sox -n -r 44100 -b 16 -c 1 -t wav - synth "$DOT_LENGTH" sine "$tone_freq" > "$fifo_file"
+      sox -n -r 44100 -b 16 -c 1 -t raw - synth "$DOT_LENGTH" sine "$tone_freq" | nc "$server_ip" "$port"
     elif [[ "$char" == "-" ]]; then
       # Strich (dash)
-      sox -n -r 44100 -b 16 -c 1 -t wav - synth "$DASH_LENGTH" sine "$tone_freq" > "$fifo_file"
+      sox -n -r 44100 -b 16 -c 1 -t raw - synth "$DASH_LENGTH" sine "$tone_freq" | nc "$server_ip" "$port"
     fi
 
-    # Pause zwischen Symbolen mit Perl berechnen
+    # Pause zwischen Symbolen
     perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
   done
 
-  # Pause nach jedem Buchstaben mit Perl berechnen
+  # Pause nach jedem Buchstaben
   perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
 }
 
@@ -589,21 +584,23 @@ speed_menu() {
 # Sox-Wrapper-Funktion
 start_sox_wrapper() {
   local fifo_file="/tmp/audio_fifo"
+  local port=12345  # Netcat-Port
 
-  # Prüfen, ob die Named Pipe existiert, und erstellen, wenn nicht
+  # Erstelle die Named Pipe, falls nicht vorhanden
   if [[ ! -p "$fifo_file" ]]; then
     mkfifo "$fifo_file"
   fi
 
-  # Prüfen, ob der Play-Prozess bereits läuft
-  if ! pgrep -f "play -q -t wav -r 44100 -b 16 -c 1 $fifo_file" > /dev/null; then
-    # Play-Befehl im Hintergrund starten mit Puffergröße von 64k
-    play --buffer 65536 -q -t wav -r 44100 -b 16 -c 1 "$fifo_file" &
-    echo "Play-Prozess gestartet und hört auf $fifo_file"
+  # Starte Netcat und Play im Hintergrund
+  if ! pgrep -f "nc -l -p $port" > /dev/null; then
+    nc -l -p "$port" > "$fifo_file" &
+    play --buffer 131072 -q -t raw -r 44100 -b 16 -c 1 "$fifo_file" &
+    echo "Netcat-Listener gestartet auf Port $port."
   else
-    echo "Play-Prozess läuft bereits."
+    echo "Netcat-Listener läuft bereits auf Port $port."
   fi
 }
+
 # Stoppe den Sox-Wrapper
 stop_sox_wrapper() {
   local fifo_file="/tmp/audio_fifo"
