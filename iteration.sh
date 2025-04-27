@@ -597,14 +597,13 @@ start_sox_wrapper() {
 
   # Prüfen, ob der Play-Prozess bereits läuft
   if ! pgrep -f "play -q -t wav -r 44100 -b 16 -c 1 $fifo_file" > /dev/null; then
-    # Play-Befehl im Hintergrund starten und dauerhaft auf Daten warten
-    play -q -t wav -r 44100 -b 16 -c 1 "$fifo_file" &
+    # Play-Befehl im Hintergrund starten mit Puffergröße von 64k
+    play --buffer 65536 -q -t wav -r 44100 -b 16 -c 1 "$fifo_file" &
     echo "Play-Prozess gestartet und hört auf $fifo_file"
   else
     echo "Play-Prozess läuft bereits."
   fi
 }
-
 # Stoppe den Sox-Wrapper
 stop_sox_wrapper() {
   local fifo_file="/tmp/audio_fifo"
@@ -622,32 +621,12 @@ stop_sox_wrapper() {
   fi
 }
 
-keep_pipe_open() {
-  local fifo_file="/tmp/audio_fifo"
-
-  # Prüfen, ob die Pipe existiert
-  if [[ ! -p "$fifo_file" ]]; then
-    echo "ERROR: Named Pipe $fifo_file existiert nicht."
-    return 1
-  fi
-
-  # Schreibe Stille nur, wenn keine anderen Töne abgespielt werden
-  while true; do
-    if [[ $(lsof | grep "$fifo_file") ]]; then
-      sleep 1  # Warte, wenn die Pipe aktiv genutzt wird
-    else
-      sox -n -r 44100 -b 16 -c 1 -t wav - synth 10 sine 0 > "$fifo_file"
-    fi
-  done
-}
-
 main() {
   setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
   calculate_timings
   sort_morse_code_advanced MORSE_CODE
   start_sox_wrapper
-  keep_pipe_open &
 
   while true; do
     echo "Welcome to Morse Trainer!"
