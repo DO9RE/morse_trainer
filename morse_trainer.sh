@@ -12,6 +12,9 @@ PROGRESS_FILE="morse_progress.txt"
 DEFAULT_WPM=20
 WPM=$DEFAULT_WPM
 ERROR_LOG_FILE="error_statistics.txt"
+fifo_file="/tmp/audio_fifo"
+sample_rate=44100
+
 
 declare -A MORSE_CODE=(
   [0]="-----" [1]=".----" [2]="..---" [3]="...--" [4]="....-"
@@ -200,14 +203,13 @@ $country_code DE $call_sign R TNX FER RPRT UR QTH $city NAME $name BK TNX FER QS
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
   done
   play_morse_tone "${MORSE_CODE[AR]}" # End signal
   ) &
 
 # Fetch user input
   read -r -p "Type the message: " input
-  wait # Wait until background playback process has ended
 
 # Compare input and original message
   input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
@@ -278,51 +280,52 @@ calculate_timings() {
   PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l | tr -d '[:space:]')
   PAUSE_WORD=$(echo "$unit_length * 7" | bc -l | tr -d '[:space:]')
 
-  # Debug-Ausgaben
-  echo "DEBUG: WPM: $WPM"
-  echo "DEBUG: Unit Length: $unit_length"
-  echo "DEBUG: DOT_LENGTH: $DOT_LENGTH"
-  echo "DEBUG: DASH_LENGTH: $DASH_LENGTH"
-  echo "DEBUG: PAUSE_SYMBOL: $PAUSE_SYMBOL"
-  echo "DEBUG: PAUSE_LETTER: $PAUSE_LETTER"
-  echo "DEBUG: PAUSE_WORD: $PAUSE_WORD"
+# Debug-Ausgaben
+# echo "DEBUG: WPM: $WPM"
+# echo "DEBUG: Unit Length: $unit_length"
+# echo "DEBUG: DOT_LENGTH: $DOT_LENGTH"
+# echo "DEBUG: DASH_LENGTH: $DASH_LENGTH"
+# echo "DEBUG: PAUSE_SYMBOL: $PAUSE_SYMBOL"
+# echo "DEBUG: PAUSE_LETTER: $PAUSE_LETTER"
+# echo "DEBUG: PAUSE_WORD: $PAUSE_WORD"
 }
 
 play_morse_tone() {
-  local tone_freq=800
-  local platform="$OSTYPE"
+    local tone_freq=800              # Frequenz des Tons
 
-# Debug: Print the tone and timing
-  echo "DEBUG: Playing tone with pattern '$1', DOT_LENGTH: $DOT_LENGTH, DASH_LENGTH: $DASH_LENGTH"
-
-  for ((i = 0; i < ${#1}; i++)); do
-    char="${1:$i:1}"
-
-    # Define tone length based on character (dot or dash)
-    if [[ "$char" == "." ]]; then
-      if [[ "$platform" == "darwin"* ]]; then
-        # macOS command for dot
-        play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      else
-        # Linux command for dot
-        AUDIODEV=hw:0 play -q -n synth "$DOT_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      fi
-    elif [[ "$char" == "-" ]]; then
-      if [[ "$platform" == "darwin"* ]]; then
-        # macOS command for dash
-        play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      else
-        # Linux command for dash
-        AUDIODEV=hw:0 play -q -n synth "$DASH_LENGTH" sine "$tone_freq" rate 48k treble +5 gain -n > /dev/null 2>&1
-      fi
+    # Überprüfen, ob die FIFO-Datei existiert
+    if [[ ! -p "$fifo_file" ]]; then
+        echo "Fehler: FIFO-Datei $fifo_file existiert nicht. Bitte initialisiere die Audio-Umgebung."
+        return 1
     fi
 
-    # Pause between symbols
-    perl -e "select(undef, undef, undef, $PAUSE_SYMBOL);"
-  done
+    # Debug: Morse-Code-Muster anzeigen
+#   echo "DEBUG: Spiele Morse-Muster '$1'."
 
-  # Pause after the letter
-  perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
+    # Schleife durch das Morse-Muster (z. B. ".-")
+    for (( i=0; i<${#1}; i++ )); do
+        local char="${1:$i:1}" # Extrahiere das aktuelle Zeichen (Punkt oder Strich)
+
+        case "$char" in
+            ".")
+                # Punkt (Dot) abspielen
+                sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$DOT_LENGTH" sine "$tone_freq" > "$fifo_file"
+                ;;
+            "-")
+                # Strich (Dash) abspielen
+                sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$DASH_LENGTH" sine "$tone_freq" > "$fifo_file"
+                ;;
+            *)
+                echo "Ungültiges Zeichen im Morse-Muster: $char"
+                ;;
+        esac
+
+        # Pause zwischen Symbolen als stille Audiodaten in die FIFO schreiben
+        sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_SYMBOL" sine 0 > "$fifo_file"
+    done
+
+    # Pause nach dem Buchstaben als stille Audiodaten in die FIFO schreiben
+    sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
 }
 
 play_morse_code() {
@@ -338,7 +341,7 @@ play_morse_code() {
 #   Tread spaces for word pauses
     if [[ "$char" == " " ]]; then
 #     echo "DEBUG: Detected space, pausing for a word."
-      perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
       continue
     fi
 
@@ -350,7 +353,7 @@ play_morse_code() {
     fi
 
 #   Pause between letters
-    perl -e "select(undef, undef, undef, $PAUSE_LETTER);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
   done
 # echo "DEBUG: Finished processing text."
 }
@@ -407,14 +410,13 @@ play_and_evaluate_groups() {
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
     done
     play_morse_tone "${MORSE_CODE[AR]}"
   ) &
 
 # Get user input
   read -r -p "Type: " input
-  wait # Give the background process time to finish
 
 # Convert input to uppercase
   input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
@@ -464,39 +466,40 @@ play_and_evaluate_groups() {
 }
 
 training_mode() {
-  echo "Listen carefully: Learn the Morse signs of the current lesson."
-  echo "Press Enter to move to the next character. Press Spacebar to repeat the current character."
+    echo "Listen carefully: Learn the Morse signs of the current lesson."
+    echo "Press Enter to move to the next character. Press Spacebar to repeat the current character."
 
-  local available_chars=("${!MORSE_CODE[@]}")
-  available_chars=("${available_chars[@]:0:$LESSON}")
+    local available_chars=("${!MORSE_CODE[@]}")
+    available_chars=("${available_chars[@]:0:$LESSON}")
 
-  local total_chars=${#available_chars[@]}  # Total number of characters in the lesson
+    local total_chars=${#available_chars[@]}  # Total number of characters in the lesson
 
-  for (( index=0; index<total_chars; index++ )); do
-    local char="${available_chars[index]}"
-    echo "Character $((index + 1)) of $total_chars: $char - Morse: ${MORSE_CODE[$char]}"
+    for (( index=0; index<total_chars; index++ )); do
+        local char="${available_chars[index]}"
+        echo "Character $((index + 1)) of $total_chars: $char - Morse: ${MORSE_CODE[$char]}"
 
-    while true; do
-      char="${available_chars[index]}"
-      echo "Playing character: $char (Morse: ${MORSE_CODE["$char"]})"
-      play_morse_tone "${MORSE_CODE["$char"]}"
+        # Initial playback of the character
+        play_morse_tone "${MORSE_CODE["$char"]}"
 
-      echo -n "Press Enter to advance, or Spacebar to repeat: "
-      stty -echo -icanon time 0 min 1
-      key=$(dd bs=1 count=1 2>/dev/null)
-      stty echo icanon
+        while true; do
+            echo -n "Press Enter to advance, or Spacebar to repeat: "
+            stty -echo -icanon time 0 min 1
+            key=$(dd bs=1 count=1 2>/dev/null)
+            stty echo icanon
 
-      if [[ -z "$key" ]]; then
-        break # Next character
-      elif [[ "$key" == " " ]]; then
-        echo "Repeating character: $char (Morse: ${MORSE_CODE[$char]})"
-        play_morse_tone "${MORSE_CODE[$char]}"
-      else
-        echo "Invalid input. Press Enter to move to the next character or Spacebar to repeat."
-      fi
+            if [[ -z "$key" ]]; then
+                # Move to the next character
+                break
+            elif [[ "$key" == " " ]]; then
+                # Replay the current character
+                echo "Repeating character: $char (Morse: ${MORSE_CODE[$char]})"
+                play_morse_tone "${MORSE_CODE[$char]}"
+            else
+                echo "Invalid input. Press Enter to move to the next character or Spacebar to repeat."
+            fi
+        done
     done
-  done
-  echo "Finished listening."
+    echo "Finished listening."
 }
 
 train_difficult_characters() {
@@ -529,11 +532,10 @@ train_difficult_characters() {
     for char in $(echo "$group" | grep -o .); do
       play_morse_tone "${MORSE_CODE["$char"]}"
     done
-    perl -e "select(undef, undef, undef, $PAUSE_WORD);"
+sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
     ) &
 
     read -r -p "Type the group: " input
-    wait 
 
     input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
 
@@ -589,11 +591,29 @@ speed_menu() {
   calculate_timings
 }
 
+initialize_audio_fifo() {
+  local platform="$OSTYPE"
+  rm "$fifo_file"
+  if ! mkfifo "$fifo_file"; then
+    echo "Error: Failed to create FIFO file at $fifo_file."
+    return 1
+  fi
+
+  if [[ "$platform" == "linux-gnu"* ]]; then
+    AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" >/dev/null 2>&1 &
+  elif [[ "$platform" == "darwin"* ]]; then
+    play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" >/dev/null 2>&1 &
+  fi
+
+  tail -f /dev/null > "$fifo_file" &
+}
+
 main() {
   setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
   calculate_timings
   sort_morse_code_advanced MORSE_CODE
+  initialize_audio_fifo
 
   while true; do
     echo "Welcome to Morse Trainer!"
