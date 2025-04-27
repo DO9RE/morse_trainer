@@ -25,7 +25,7 @@ if [[ ! -p "$FIFO_FILE" ]]; then
 fi
 
 # Startet den Play-Prozess im Hintergrund
-AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer "$FIFO_FILE" &
+AUDIODEV=hw:0 play --buffer 4096 -q -t raw -r "$SAMPLE_RATE" -b 16 -c 1 -e signed-integer "$FIFO_FILE" &
 
 # Halte die Pipe offen mit tail
 tail -f /dev/null > "$FIFO_FILE" &
