@@ -210,7 +210,6 @@ sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WOR
 
 # Fetch user input
   read -r -p "Type the message: " input
-  wait # Wait until background playback process has ended
 
 # Compare input and original message
   input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
@@ -281,14 +280,14 @@ calculate_timings() {
   PAUSE_LETTER=$(echo "$unit_length * 3" | bc -l | tr -d '[:space:]')
   PAUSE_WORD=$(echo "$unit_length * 7" | bc -l | tr -d '[:space:]')
 
-  # Debug-Ausgaben
-  echo "DEBUG: WPM: $WPM"
-  echo "DEBUG: Unit Length: $unit_length"
-  echo "DEBUG: DOT_LENGTH: $DOT_LENGTH"
-  echo "DEBUG: DASH_LENGTH: $DASH_LENGTH"
-  echo "DEBUG: PAUSE_SYMBOL: $PAUSE_SYMBOL"
-  echo "DEBUG: PAUSE_LETTER: $PAUSE_LETTER"
-  echo "DEBUG: PAUSE_WORD: $PAUSE_WORD"
+# Debug-Ausgaben
+# echo "DEBUG: WPM: $WPM"
+# echo "DEBUG: Unit Length: $unit_length"
+# echo "DEBUG: DOT_LENGTH: $DOT_LENGTH"
+# echo "DEBUG: DASH_LENGTH: $DASH_LENGTH"
+# echo "DEBUG: PAUSE_SYMBOL: $PAUSE_SYMBOL"
+# echo "DEBUG: PAUSE_LETTER: $PAUSE_LETTER"
+# echo "DEBUG: PAUSE_WORD: $PAUSE_WORD"
 }
 
 play_morse_tone() {
@@ -301,7 +300,7 @@ play_morse_tone() {
     fi
 
     # Debug: Morse-Code-Muster anzeigen
-    echo "DEBUG: Spiele Morse-Muster '$1'."
+#   echo "DEBUG: Spiele Morse-Muster '$1'."
 
     # Schleife durch das Morse-Muster (z. B. ".-")
     for (( i=0; i<${#1}; i++ )); do
@@ -418,7 +417,6 @@ sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WOR
 
 # Get user input
   read -r -p "Type: " input
-  wait # Give the background process time to finish
 
 # Convert input to uppercase
   input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
@@ -437,7 +435,7 @@ sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WOR
       correct_characters=$((correct_characters + ${#expected_group}))
     else
       echo "Group $((i+1)): Wrong (Expected: ${expected_group}, Entered: ${input_group})"
-c
+
 #     Compare character by character
       for ((j=0; j<${#expected_group}; j++)); do
         local expected_char="${expected_group:j:1}"
@@ -537,7 +535,6 @@ sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WOR
     ) &
 
     read -r -p "Type the group: " input
-    wait 
 
     input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
 
@@ -594,19 +591,30 @@ speed_menu() {
 }
 
 initialize_audio_fifo() {
-  local platform="$OSTYPE"
+    local platform="$OSTYPE"
+  rm "$fifo_file"
+    # Erstelle FIFO-Datei
+    if ! mkfifo "$fifo_file"; then
+        echo "Error: Failed to create FIFO file at $fifo_file."
+        return 1
+    fi
 
-        mkfifo "$fifo_file"
+    # Erkenne Betriebssystem und starte den passenden Befehl
+    if [[ "$platform" == "linux-gnu"* ]]; then
+        AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" >/dev/null 2>&1 &
+        echo "Play process started on Linux with AUDIODEV=hw:0."
+    elif [[ "$platform" == "darwin"* ]]; then
+        play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" >/dev/null 2>&1 &
+        echo "Play process started on macOS."
+    else
+        echo "Error: Unsupported operating system: $platform"
+        return 1
+    fi
 
-  if [[ "$platform" == "linux-gnu"* ]]; then
-    AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" &
-  elif [[ "$platform" == "darwin"* ]]; then
-    play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" &
-  fi
-
-  tail -f /dev/null > "$fifo_file" &
+    # Halte die FIFO-Datei offen
+    tail -f /dev/null > "$fifo_file" &
+    echo "FIFO pipe is being kept open."
 }
-
 main() {
   setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
