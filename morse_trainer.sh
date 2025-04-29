@@ -608,6 +608,198 @@ initialize_audio_fifo() {
   tail -f /dev/null > "$fifo_file" &
 }
 
+morse_input_mode() {
+  echo "Select Morse input mode:"
+  echo "1. Single key (Up arrow for dots and dashes based on press duration)"
+  echo "2. Two keys (Right and Left arrows for dots and dashes)"
+  echo "3. Two-key combination (Right+Left for alternating patterns)"
+  read -r -p "Choose a mode (1-3): " mode_choice
+
+  case $mode_choice in
+    1)
+      echo "Single key mode selected. Use the Up arrow key."
+      single_key_mode
+      ;;
+    2)
+      echo "Two-key mode selected. Configuring keys..."
+      two_key_mode
+      ;;
+    3)
+      echo "Two-key combination mode selected."
+      two_key_combination_mode
+      ;;
+    *)
+      echo "Invalid selection. Returning to main menu."
+      return
+      ;;
+  esac
+}
+
+play_morse_tone_realtime() {
+  local tone_freq=800 # Frequenz des Tons (800 Hz)
+  fifo_file_realtime="/tmp/audio_fifo_realtime"
+
+  # FIFO-Datei prüfen/erstellen
+  if [[ ! -p "$fifo_file_realtime" ]]; then
+    mkfifo "$fifo_file_realtime"
+  fi
+
+  # Hintergrundprozess für Rohdatensynthese starten
+  (
+    sox -n -r $sample_rate -b 16 -c 1 -e signed-integer -t raw - synth 800 sine "$tone_freq" > "$fifo_file_realtime"
+  ) &
+  tone_pid=$! # Prozess-ID speichern
+
+  AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file_realtime" >/dev/null 2>&1 &
+
+  audio_pid=$! # ID des `play`-Prozesses speichern
+  tail -f /dev/null > "$fifo_file_realtime" &
+
+}
+
+stop_morse_tone() {
+  # Beide Prozesse beenden
+  kill "$tone_pid" "$audio_pid" 2>/dev/null
+  # FIFO-Datei bereinigen
+  rm -f $fifo_file_realtime
+}
+
+single_key_mode() {
+  echo "Press and hold the Up arrow key to generate Morse code."
+  echo "Release the key to stop. Short press for dot, long press for dash."
+  echo "Press 'q' to quit."
+
+  while true; do
+    read -rsn1 key
+    if [[ $key == $'\e' ]]; then
+      read -rsn2 key # Read the rest of the escape sequence
+      if [[ $key == "[A" ]]; then
+        # Begin timing and start tone
+        start_time=$(date +%s%N)
+        play_morse_tone_realtime
+
+        # Wait until key is released
+        while read -rsn1 -t 0.1 key; do
+          if [[ -z $key ]]; then
+            break
+          fi
+        done
+
+        # Stop tone and calculate duration
+        stop_morse_tone
+        end_time=$(date +%s%N)
+        duration=$(( (end_time - start_time) / 1000000 )) # Duration in ms
+
+        # Determine if it was a dot or dash
+        if (( duration < 500 )); then
+          echo -n "."
+        else
+          echo -n "-"
+        fi
+      fi
+    elif [[ $key == "q" ]]; then
+      echo "Exiting single key mode."
+      break
+    fi
+  done
+}
+
+two_key_mode() {
+  echo "Press Right arrow for dots and Left arrow for dashes. Hold for repeated symbols."
+  echo "Press 'q' to quit."
+
+  while true; do
+    read -rsn1 key
+    if [[ $key == $'\e' ]]; then
+      read -rsn2 key # Read the rest of the escape sequence
+      if [[ $key == "[C" ]]; then
+        play_morse_tone_realtime
+        echo -n "."
+        while read -rsn1 -t 0.1 key; do
+          if [[ -z $key ]]; then
+            break
+          fi
+        done
+        stop_morse_tone
+      elif [[ $key == "[D" ]]; then
+        play_morse_tone_realtime
+        echo -n "-"
+        while read -rsn1 -t 0.1 key; do
+          if [[ -z $key ]]; then
+            break
+          fi
+        done
+        stop_morse_tone
+      fi
+    elif [[ $key == "q" ]]; then
+      echo "Exiting two-key mode."
+      break
+    fi
+  done
+}
+
+two_key_combination_mode() {
+  echo "Press and hold Right and Left arrows for alternating dots and dashes."
+  echo "Press 'q' to quit."
+
+  while true; do
+    read -rsn1 key1
+    if [[ $key1 == $'\e' ]]; then
+      read -rsn2 key1 # Read the rest of the escape sequence
+      if [[ $key1 == "[C" ]]; then
+        # Wait for second key press
+        read -rsn1 -t 0.5 key2
+        if [[ $key2 == $'\e' ]]; then
+          read -rsn2 key2
+          if [[ $key2 == "[D" ]]; then
+            echo "Alternating dots and dashes."
+            while true; do
+              play_morse_tone_realtime
+              echo -n "."
+              sleep 0.2
+              stop_morse_tone
+              play_morse_tone_realtime
+              echo -n "-"
+              sleep 0.2
+              stop_morse_tone
+              read -rsn1 -t 0.1 key
+              if [[ $key == "q" ]]; then
+                break
+              fi
+            done
+          fi
+        fi
+      elif [[ $key1 == "[D" ]]; then
+        # Wait for second key press
+        read -rsn1 -t 0.5 key2
+        if [[ $key2 == $'\e' ]]; then
+          read -rsn2 key2
+          if [[ $key2 == "[C" ]]; then
+            echo "Alternating dashes and dots."
+            while true; do
+              play_morse_tone_realtime
+              echo -n "-"
+              sleep 0.2
+              stop_morse_tone
+              play_morse_tone_realtime
+              echo -n "."
+              sleep 0.2
+              stop_morse_tone
+              read -rsn1 -t 0.1 key
+              if [[ $key == "q" ]]; then
+                break
+              fi
+            done
+          fi
+        fi
+      fi
+    elif [[ $key1 == "q" ]]; then
+      echo "Exiting two-key combination mode."
+      break
+    fi
+  done
+}
+
 main() {
   setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
@@ -622,8 +814,9 @@ main() {
     echo "3. Change speed (current: $WPM WPM)"
     echo "4. Train difficult characters"
     echo "5. QSO training mode"
-    echo "6. Quit"
-    read -r -p "Choose an option (1-6): " option
+    echo "6. Morse input mode" 
+    echo "7. Quit"
+    read -r -p "Choose an option (1-7): " option
 
     case $option in
       1)
@@ -646,6 +839,9 @@ main() {
         qso_training_mode
         ;;
       6)
+        morse_input_mode
+        ;;
+      7)
         echo "Bye."
         exit 0
         ;;
