@@ -63,67 +63,94 @@ setup_aliases() {
 }
 
 sort_morse_code_advanced() {
-# Access the given array via reference
+  # Access the given array via reference
   local -n morse_array=$1
 
-# Local arrays for categorizing Morse code characters
+  # Local arrays for categorizing Morse code characters
   declare -a easy_keys=()
   declare -a medium_keys=()
   declare -a hard_keys=()
   declare -a numbers_keys=()
   declare -a special_keys=()
-  declare -A temp_array=() # Assoziatives Array für die sortierten Schlüssel
+  declare -A temp_array=() # Associative Array for the sorted keys
 
-# Debug: Print original array
-# echo "DEBUG: Original keys in MORSE_CODE:"
-# for key in "${!morse_array[@]}"; do
-#   echo "  Key: $key, Value: ${morse_array[$key]}"
-# done
-
-# Categorize keys
+  # Categorize keys
   for key in "${!morse_array[@]}"; do
     local code="${morse_array[$key]}"
     local length="${#code}"
-
-#   echo "DEBUG: Processing key '$key' with Morse code '$code'"
 
     if [[ "$key" =~ [0-9] ]]; then
       numbers_keys+=("$key")
     elif [[ "$key" =~ [A-Z] ]]; then
       if [[ "$code" =~ ^(\.|-)\1*$ ]] || [[ "$length" -le 2 ]]; then
         easy_keys+=("$key")
-#       echo "DEBUG: Key '$key' categorized as EASY"
       elif [[ "$length" -le 3 ]]; then
         medium_keys+=("$key")
-#       echo "DEBUG: Key '$key' categorized as MEDIUM"
       else
         hard_keys+=("$key")
-#       echo "DEBUG: Key '$key' categorized as HARD"
       fi
     else
       special_keys+=("$key")
-#     echo "DEBUG: Key '$key' categorized as SPECIAL"
     fi
   done
 
-# concatenate sorted keys
-  declare -a sorted_keys=() # Special thanks to Sly
-  sorted_keys+=("${easy_keys[@]}")
+  # Concatenate sorted keys for letters
+  declare -a letters_keys=()
+  letters_keys+=("${easy_keys[@]}")
   local max_length=$(( ${#medium_keys[@]} > ${#hard_keys[@]} ? ${#medium_keys[@]} : ${#hard_keys[@]} ))
   for ((i=0; i<max_length; i++)); do
-     [[ $i -lt ${#medium_keys[@]} ]] && sorted_keys+=("${medium_keys[$i]}")
-     [[ $i -lt ${#hard_keys[@]} ]] && sorted_keys+=("${hard_keys[$i]}")
+    [[ $i -lt ${#medium_keys[@]} ]] && letters_keys+=("${medium_keys[$i]}")
+    [[ $i -lt ${#hard_keys[@]} ]] && letters_keys+=("${hard_keys[$i]}")
   done
-  sorted_keys+=("${numbers_keys[@]}")
-  sorted_keys+=("${special_keys[@]}")
 
-# Debug: Print sorted keys
-# echo "DEBUG: Sorted keys:"
-# for key in "${sorted_keys[@]}"; do
-#   echo "  Key: $key"
-# done
+  # Interleave letters, numbers, and special characters
+  declare -a sorted_keys=()
+  local letters_count=${#letters_keys[@]}
+  local numbers_count=${#numbers_keys[@]}
+  local specials_count=${#special_keys[@]}
+  local letters_index=0
+  local numbers_index=0
+  local specials_index=0
+  local iteration=0
 
-# Build up new array, based on sorted keys
+  while (( letters_index < letters_count )); do
+    # Add two letters
+    sorted_keys+=("${letters_keys[letters_index]}")
+    ((letters_index++))
+    ((iteration++))
+    if (( letters_index < letters_count )); then
+      sorted_keys+=("${letters_keys[letters_index]}")
+      ((letters_index++))
+      ((iteration++))
+    fi
+
+    # Add one number if available
+    if (( numbers_index < numbers_count )); then
+      sorted_keys+=("${numbers_keys[numbers_index]}")
+      ((numbers_index++))
+      ((iteration++))
+    fi
+
+    # Add one special character every 3 iterations if available
+    if (( iteration % 3 == 0 && specials_index < specials_count )); then
+      sorted_keys+=("${special_keys[specials_index]}")
+      ((specials_index++))
+    fi
+  done
+
+  # Add remaining numbers, if any
+  while (( numbers_index < numbers_count )); do
+    sorted_keys+=("${numbers_keys[numbers_index]}")
+    ((numbers_index++))
+  done
+
+  # Add remaining special characters, if any
+  while (( specials_index < specials_count )); do
+    sorted_keys+=("${special_keys[specials_index]}")
+    ((specials_index++))
+  done
+
+  # Build up new array, based on sorted keys
   for key in "${sorted_keys[@]}"; do
     if [[ -n "${morse_array[$key]}" ]]; then
       temp_array["$key"]="${morse_array[$key]}"
@@ -132,25 +159,13 @@ sort_morse_code_advanced() {
     fi
   done
 
-# Debug: Print new array
-# echo "DEBUG: New array before overwriting original:"
-# for key in "${!temp_array[@]}"; do
-#   echo "  Key: $key, Value: ${temp_array[$key]}"
-# done
-
-# Delete original array and rebuild
+  # Delete original array and rebuild
   for key in "${!morse_array[@]}"; do
     unset "morse_array[$key]"
   done
   for key in "${!temp_array[@]}"; do
     morse_array["$key"]="${temp_array[$key]}"
   done
-
-# Debug: Print final array
-# echo "DEBUG: Final state of MORSE_CODE:"
-# for key in "${!morse_array[@]}"; do
-#   echo "  Key: $key, Value: ${morse_array[$key]}"
-# done
 }
 
 generate_location() {
