@@ -636,24 +636,32 @@ morse_input_mode() {
 }
 
 play_morse_tone_realtime() {
-  local tone_freq=800
-  local fifo_file="/tmp/audio_fifo_continous"
+  local tone_freq=800 # Frequenz des Tons (800 Hz)
+  fifo_file_realtime="/tmp/audio_fifo_realtime"
 
   # FIFO-Datei prüfen/erstellen
-  if [[ ! -p "$fifo_file" ]]; then
-    mkfifo "$fifo_file"
+  if [[ ! -p "$fifo_file_realtime" ]]; then
+    mkfifo "$fifo_file_realtime"
   fi
 
-  # Hintergrundprozess starten
-  ( sox -q -r 44100 -b 16 -c 1 -t raw - synth 999 sine "$tone_freq" > "$fifo_file" ) &
+  # Hintergrundprozess für Rohdatensynthese starten
+  (
+    sox -n -r $sample_rate -b 16 -c 1 -e signed-integer -t raw - synth 800 sine "$tone_freq" > "$fifo_file_realtime"
+  ) &
   tone_pid=$! # Prozess-ID speichern
 
-  cat "$fifo_file" | AUDIODEV=hw:0 play -q -t raw -r 44100 -b 16 -c 1 -e signed-integer - &
-  audio_pid=$!
+  AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file_realtime" >/dev/null 2>&1 &
+
+  audio_pid=$! # ID des `play`-Prozesses speichern
+  tail -f /dev/null > "$fifo_file_realtime" &
+
 }
 
 stop_morse_tone() {
+  # Beide Prozesse beenden
   kill "$tone_pid" "$audio_pid" 2>/dev/null
+  # FIFO-Datei bereinigen
+  rm -f $fifo_file_realtime
 }
 
 single_key_mode() {
