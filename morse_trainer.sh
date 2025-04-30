@@ -815,6 +815,33 @@ two_key_combination_mode() {
   done
 }
 
+letters_to_morse_mode() {
+  echo "Enter text to convert to Morse code. Press Enter when finished:"
+  read -r input_text
+
+  # Convert to uppercase
+  input_text=$(echo "$input_text" | tr '[:lower:]' '[:upper:]')
+
+  echo "Morse code:"
+  for (( i=0; i<${#input_text}; i++ )); do
+    local char="${input_text:i:1}" # Extrahiere das aktuelle Zeichen
+    if [[ "$char" == " " ]]; then
+      echo -n " / "  # Trennung zwischen Wörtern in der Anzeige
+      # Pause zwischen Wörtern in der Audioausgabe
+      sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
+    elif [[ -n "${MORSE_CODE[$char]}" ]]; then
+      echo -n "${MORSE_CODE[$char]} "  # Morse-Code für das Zeichen anzeigen
+      # Morse-Code für das Zeichen abspielen
+      play_morse_tone "${MORSE_CODE[$char]}"
+    else
+      echo -n "[?] "  # Platzhalter für nicht definierte Zeichen
+      echo "WARNING: No Morse code defined for character '$char'."
+    fi
+  done
+
+  echo -e "\nMorse code playback complete."
+}
+
 main() {
   setup_aliases # Check, if we are running Linux or Mac OS
   load_progress
@@ -830,8 +857,9 @@ main() {
     echo "4. Train difficult characters"
     echo "5. QSO training mode"
     echo "6. Morse input mode" 
-    echo "7. Quit"
-    read -r -p "Choose an option (1-7): " option
+    echo "7. Letters to Morse mode"  
+    echo "8. Quit"
+    read -r -p "Choose an option (1-8): " option
 
     case $option in
       1)
@@ -856,7 +884,10 @@ main() {
       6)
         morse_input_mode
         ;;
-      7)
+    7)
+      letters_to_morse_mode 
+      ;;
+      8)
         echo "Bye."
         exit 0
         ;;
