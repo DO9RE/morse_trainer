@@ -823,8 +823,8 @@ letters_to_morse_mode() {
   input_text=$(echo "$input_text" | tr '[:lower:]' '[:upper:]')
 
   echo "Morse code:"
-  for (( i=0; i<${#input_text}; i++ )); do
-    local char="${input_text:i:1}" # Extrahiere das aktuelle Zeichen
+  for (( j=0; j<${#input_text}; j++ )); do
+    local char="${input_text:j:1}" # Extrahiere das aktuelle Zeichen
     if [[ "$char" == " " ]]; then
       echo -n " / "  # Trennung zwischen Wörtern in der Anzeige
       # Pause zwischen Wörtern in der Audioausgabe
