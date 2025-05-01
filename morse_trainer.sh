@@ -306,41 +306,37 @@ calculate_timings() {
 }
 
 play_morse_tone() {
-    local tone_freq=800              # Frequenz des Tons
+  local tone_freq=800              # Frequenz des Tons
+  local i=0
 
-    # Überprüfen, ob die FIFO-Datei existiert
-    if [[ ! -p "$fifo_file" ]]; then
-        echo "Fehler: FIFO-Datei $fifo_file existiert nicht. Bitte initialisiere die Audio-Umgebung."
-        return 1
-    fi
+# Check, if fifo file exists
+  if [[ ! -p "$fifo_file" ]]; then
+    echo "Fehler: FIFO-Datei $fifo_file existiert nicht. Bitte initialisiere die Audio-Umgebung."
+    return 1
+  fi
 
-    # Debug: Morse-Code-Muster anzeigen
-#   echo "DEBUG: Spiele Morse-Muster '$1'."
+# echo "DEBUG: Spiele Morse-Muster '$1'."
 
-    # Schleife durch das Morse-Muster (z. B. ".-")
-    for (( i=0; i<${#1}; i++ )); do
-        local char="${1:$i:1}" # Extrahiere das aktuelle Zeichen (Punkt oder Strich)
+  for (( i=0; i<${#1}; i++ )); do
+    local char="${1:$i:1}" # Extrahiere das aktuelle Zeichen (Punkt oder Strich)
 
-        case "$char" in
-            ".")
-                # Punkt (Dot) abspielen
-                sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$DOT_LENGTH" sine "$tone_freq" > "$fifo_file"
-                ;;
-            "-")
-                # Strich (Dash) abspielen
-                sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$DASH_LENGTH" sine "$tone_freq" > "$fifo_file"
-                ;;
-            *)
-                echo "Ungültiges Zeichen im Morse-Muster: $char"
-                ;;
-        esac
+    case "$char" in
+    ".")
+      sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$DOT_LENGTH" sine "$tone_freq" > "$fifo_file"
+      ;;
+    "-")
+      sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$DASH_LENGTH" sine "$tone_freq" > "$fifo_file"
+      ;;
+    *)
+      echo "Ungültiges Zeichen im Morse-Muster: $char"
+      ;;
+    esac
 
-        # Pause zwischen Symbolen als stille Audiodaten in die FIFO schreiben
-        sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_SYMBOL" sine 0 > "$fifo_file"
-    done
+    sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_SYMBOL" sine 0 > "$fifo_file"
+  done
 
-    # Pause nach dem Buchstaben als stille Audiodaten in die FIFO schreiben
-    sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
+# Pause nach dem Buchstaben als stille Audiodaten in die FIFO schreiben
+  sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_LETTER" sine 0 > "$fifo_file"
 }
 
 play_morse_code() {
@@ -819,19 +815,18 @@ letters_to_morse_mode() {
   echo "Enter text to convert to Morse code. Press Enter when finished:"
   read -r input_text
 
-  # Convert to uppercase
+# Convert to uppercase
   input_text=$(echo "$input_text" | tr '[:lower:]' '[:upper:]')
 
   echo "Morse code:"
   for (( j=0; j<${#input_text}; j++ )); do
     local char="${input_text:j:1}" # Extrahiere das aktuelle Zeichen
     if [[ "$char" == " " ]]; then
-      echo -n " / "  # Trennung zwischen Wörtern in der Anzeige
-      # Pause zwischen Wörtern in der Audioausgabe
+      echo -n "/ "  # Trennung zwischen Wörtern in der Anzeige
+#     Pause zwischen Wörtern in der Audioausgabe
       sox -n -r "$sample_rate" -b 16 -c 1 -e signed-integer -t raw - synth "$PAUSE_WORD" sine 0 > "$fifo_file"
     elif [[ -n "${MORSE_CODE[$char]}" ]]; then
       echo -n "${MORSE_CODE[$char]} "  # Morse-Code für das Zeichen anzeigen
-      # Morse-Code für das Zeichen abspielen
       play_morse_tone "${MORSE_CODE[$char]}"
     else
       echo -n "[?] "  # Platzhalter für nicht definierte Zeichen
@@ -840,6 +835,7 @@ letters_to_morse_mode() {
   done
 
   echo -e "\nMorse code playback complete."
+  read -p 'Press enter key'
 }
 
 main() {
