@@ -629,7 +629,7 @@ initialize_audio_fifo() {
     AUDIODEV=hw:0 play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" >/dev/null 2>&1 &
   elif [[ "$platform" == "darwin"* ]]; then
 #   play --buffer 1024 -q -t raw -r "$sample_rate" -b 16 -c 1 -e signed-integer "$fifo_file" >/dev/null 2>&1 &
-    ./fifo_audio_player "$fifo_file" & 
+    ./audio_fifo_player "$fifo_file" & 
   fi
 
   tail -f /dev/null > "$fifo_file" &
