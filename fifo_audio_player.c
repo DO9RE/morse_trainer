@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     format.mFormatID = kAudioFormatLinearPCM;
     format.mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked;
     format.mFramesPerPacket = 1;
-    format.mChannelsPerFrame = 1; // Mono
+    format.mChannelsPerFrame = 2; // Stereo
     format.mBitsPerChannel = 16;
     format.mBytesPerPacket = 4;
     format.mBytesPerFrame = 4;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     AudioQueueStart(state.queue, NULL);
 
     printf("Listening to FIFO: %s\n", fifo_path);
-    printf("Playing RAW PCM 44100Hz, 16bit, Mono\n");
+    printf("Playing RAW PCM 44100Hz, 16bit, Stereo\n");
 
     // Läuft, bis abgebrochen wird
     while (1) {
