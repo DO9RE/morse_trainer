@@ -37,6 +37,7 @@ setup_aliases() {
     alias shuf="gshuf"  # Use GNU shuf from coreutils
     alias sed="gsed"    # Use GNU sed from coreutils
     alias grep="ggrep"  # Use GNU grep from coreutils
+
     # Ensure necessary GNU tools are installed
     if ! command -v gshuf &> /dev/null; then
       echo "Error: gshuf (GNU shuf) is not installed. Install it with 'brew install coreutils'."
@@ -49,6 +50,20 @@ setup_aliases() {
     if ! command -v ggrep &> /dev/null; then
       echo "Error: ggrep (GNU grep) is not installed. Install it with 'brew install grep'."
       exit 1
+    fi
+
+    # Check if fifo_audio_player is compiled
+    if [[ ! -f "fifo_audio_player" ]]; then
+      echo "Compiling fifo_audio_player..."
+      clang -o fifo_audio_player fifo_audio_player.c -framework AudioToolbox
+      if [[ $? -ne 0 ]]; then
+        echo "Error: Failed to compile fifo_audio_player."
+        exit 1
+      else
+        chmod +x fifo_audio_player
+        echo "fifo_audio_player made executable"
+      fi
+      echo "fifo_audio_player compiled successfully."
     fi
 
     echo "Aliases set for macOS: shuf -> gshuf, sed -> gsed, grep -> ggrep"
