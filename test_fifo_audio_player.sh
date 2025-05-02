@@ -26,32 +26,23 @@ trap cleanup SIGINT SIGTERM
 echo "Morse player running. Enter dots (.) and dashes (-) followed by Enter to send signals."
 echo "Press Ctrl+C to exit."
 
-# Function to generate sine waves
+# Function to generate sine waves with SoX
 generate_wave() {
     local duration=$1
-    local amplitude=32767
     local frequency=$2
-    local sample_rate=44100
-    local num_samples=$((duration * sample_rate))
-
-    for ((n = 0; n < num_samples; n++)); do
-        sample=$(awk -v n="$n" -v freq="$frequency" -v amp="$amplitude" -v rate="$sample_rate" \
-            'BEGIN { print int(amp * sin(2 * 3.14159 * freq * n / rate)) }')
-        printf "%04x" $sample | xxd -r -p
-        printf "%04x" $sample | xxd -r -p
-    done
+    sox -n -r 44100 -c 2 -b 16 -t raw - synth "$duration" sine "$frequency" > "$FIFO_PATH"
 }
 
 # Read user input and send audio data
 while read -r -n1 char; do
     case $char in
         ".")
-            # Dot: Short sine wave (e.g., 440 Hz for 0.1 second)
-            generate_wave 0.1 440 > "$FIFO_PATH"
+            # Dot: Short sine wave (440 Hz for 0.1 seconds)
+            generate_wave 0.1 440
             ;;
         "-")
-            # Dash: Long sine wave (e.g., 440 Hz for 0.3 second)
-            generate_wave 0.3 440 > "$FIFO_PATH"
+            # Dash: Long sine wave (440 Hz for 0.3 seconds)
+            generate_wave 0.3 440
             ;;
         *)
             echo "Invalid input. Enter only dots (.) or dashes (-)."
